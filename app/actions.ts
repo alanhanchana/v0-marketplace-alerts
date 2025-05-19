@@ -18,6 +18,7 @@ export async function createWatchlistItem(formData: FormData) {
     const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
     const zip = formData.get("zip") as string
     const radius = Number.parseInt(formData.get("radius") as string) || 1
+    const marketplace = (formData.get("marketplace") as string) || "craigslist"
 
     if (!keyword || isNaN(maxPrice) || !zip) {
       return {
@@ -42,6 +43,8 @@ export async function createWatchlistItem(formData: FormData) {
       }
     }
 
+    console.log("Creating watchlist item:", { keyword, maxPrice, zip, radius, marketplace })
+
     // Try to insert the data
     const { error } = await supabase.from("watchlist").insert([
       {
@@ -49,6 +52,7 @@ export async function createWatchlistItem(formData: FormData) {
         max_price: maxPrice,
         zip,
         radius,
+        marketplace,
       },
     ])
 
@@ -124,8 +128,9 @@ export async function updateWatchlistItem(formData: FormData) {
     const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
     const zip = formData.get("zip") as string
     const radius = Number.parseInt(formData.get("radius") as string) || 1
+    const marketplace = (formData.get("marketplace") as string) || "craigslist"
 
-    console.log("Updating watchlist item:", { id, keyword, maxPrice, zip, radius })
+    console.log("Updating watchlist item:", { id, keyword, maxPrice, zip, radius, marketplace })
 
     if (!id || !keyword || isNaN(maxPrice) || !zip) {
       return {
@@ -158,6 +163,7 @@ export async function updateWatchlistItem(formData: FormData) {
         max_price: maxPrice,
         zip,
         radius,
+        marketplace,
       })
       .eq("id", id)
 
@@ -180,6 +186,7 @@ export async function updateWatchlistItem(formData: FormData) {
         max_price: maxPrice,
         zip,
         radius,
+        marketplace,
       },
     }
   } catch (error: any) {

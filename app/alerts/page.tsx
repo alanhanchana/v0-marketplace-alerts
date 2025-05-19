@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -57,6 +57,7 @@ interface Alert {
   max_price: number
   zip: string
   radius: number
+  marketplace?: string
   image?: string
   created_at?: string
 }
@@ -70,6 +71,8 @@ export default function AlertsPage() {
   const [editAlert, setEditAlert] = useState<Alert | null>(null)
   const [realtimeConnected, setRealtimeConnected] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const deleteInProgressRef = useRef(false)
+  const alertDialogOpenRef = useRef(false)
 
   // Handle alert update from edit dialog
   const handleAlertUpdated = useCallback((updatedAlert: Alert) => {
@@ -170,7 +173,7 @@ export default function AlertsPage() {
                 })
 
                 // Only show toast if this wasn't triggered by the current user's delete
-                if (deleteAlertId !== deletedAlertId) {
+                if (deleteAlertId !== deletedAlertId && !deleteInProgressRef.current) {
                   toast({
                     title: "Alert Deleted",
                     description: "An alert has been deleted",
@@ -211,17 +214,25 @@ export default function AlertsPage() {
     }
   }, [toast]) // Include toast in dependencies to avoid lint warnings
 
+  // Track when the alert dialog opens/closes
+  useEffect(() => {
+    alertDialogOpenRef.current = !!deleteAlertId
+  }, [deleteAlertId])
+
   // Handle delete alert
   const handleDeleteAlert = async () => {
     if (!deleteAlertId || isDeleting) return
 
     setIsDeleting(true)
+    deleteInProgressRef.current = true
+
     try {
       // Find the alert to delete
       const alertToDelete = alerts.find((alert) => alert.id === deleteAlertId)
+      const idToDelete = deleteAlertId
 
       // Remove from UI immediately
-      setAlerts((currentAlerts) => currentAlerts.filter((alert) => alert.id !== deleteAlertId))
+      setAlerts((currentAlerts) => currentAlerts.filter((alert) => alert.id !== idToDelete))
 
       // Close the dialog
       setDeleteAlertId(null)
@@ -234,7 +245,7 @@ export default function AlertsPage() {
       })
 
       // Actually delete from database
-      const result = await deleteWatchlistItem(deleteAlertId)
+      const result = await deleteWatchlistItem(idToDelete)
 
       if (!result.success) {
         // If delete fails, restore the alert and show error
@@ -258,6 +269,17 @@ export default function AlertsPage() {
       })
     } finally {
       setIsDeleting(false)
+      // Use a small timeout to prevent race conditions with realtime events
+      setTimeout(() => {
+        deleteInProgressRef.current = false
+      }, 500)
+    }
+  }
+
+  // Handle dialog close
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setDeleteAlertId(null)
     }
   }
 
@@ -303,6 +325,11 @@ export default function AlertsPage() {
                     height={200}
                     className="h-full object-cover"
                   />
+                  {alert.marketplace && (
+                    <div className="absolute top-1 left-1 bg-black bg-opacity-60 text-white text-xs px-1.5 py-0.5 rounded">
+                      {alert.marketplace === "facebook" ? "FB" : "CL"}
+                    </div>
+                  )}
                 </div>
                 <div className="w-2/3 flex flex-col">
                   <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
@@ -352,8 +379,8 @@ export default function AlertsPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteAlertId} onOpenChange={(open) => !open && setDeleteAlertId(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!deleteAlertId} onOpenChange={handleDialogOpenChange}>
+        <AlertDialogContent className="z-50">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -363,7 +390,10 @@ export default function AlertsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteAlert}
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteAlert()
+              }}
               className="bg-red-600 hover:bg-red-700"
               disabled={isDeleting}
             >
