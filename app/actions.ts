@@ -17,11 +17,28 @@ export async function createWatchlistItem(formData: FormData) {
     const keyword = formData.get("keyword") as string
     const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
     const zip = formData.get("zip") as string
+    const radius = Number.parseInt(formData.get("radius") as string) || 1
 
     if (!keyword || isNaN(maxPrice) || !zip) {
       return {
         success: false,
         error: "All fields are required and max price must be a number",
+      }
+    }
+
+    // Validate zip code format
+    if (!/^\d{5}$/.test(zip)) {
+      return {
+        success: false,
+        error: "ZIP code must be 5 digits",
+      }
+    }
+
+    // Validate max price
+    if (maxPrice <= 0) {
+      return {
+        success: false,
+        error: "Maximum price must be greater than zero",
       }
     }
 
@@ -31,6 +48,7 @@ export async function createWatchlistItem(formData: FormData) {
         keyword,
         max_price: maxPrice,
         zip,
+        radius,
       },
     ])
 
@@ -55,12 +73,117 @@ export async function createWatchlistItem(formData: FormData) {
     // Revalidate the alerts page to show the new data
     revalidatePath("/alerts")
 
-    // Return success
+    // Return success with the form data for the toast message
+    return {
+      success: true,
+      data: {
+        keyword,
+        zip,
+      },
+    }
+  } catch (error: any) {
+    console.error("Error inserting watchlist item:", error)
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred",
+    }
+  }
+}
+
+export async function deleteWatchlistItem(id: string) {
+  try {
+    const { error } = await supabase.from("watchlist").delete().eq("id", id)
+
+    if (error) {
+      console.error("Error deleting watchlist item:", error)
+      return {
+        success: false,
+        error: error.message || "Failed to delete watchlist item",
+      }
+    }
+
+    // Revalidate the alerts page to show the updated data
+    revalidatePath("/alerts")
+
     return {
       success: true,
     }
   } catch (error: any) {
-    console.error("Error inserting watchlist item:", error)
+    console.error("Error deleting watchlist item:", error)
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred",
+    }
+  }
+}
+
+export async function updateWatchlistItem(formData: FormData) {
+  try {
+    const id = formData.get("id") as string
+    const keyword = formData.get("keyword") as string
+    const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
+    const zip = formData.get("zip") as string
+    const radius = Number.parseInt(formData.get("radius") as string) || 1
+
+    console.log("Updating watchlist item:", { id, keyword, maxPrice, zip, radius })
+
+    if (!id || !keyword || isNaN(maxPrice) || !zip) {
+      return {
+        success: false,
+        error: "All fields are required and max price must be a number",
+      }
+    }
+
+    // Validate zip code format
+    if (!/^\d{5}$/.test(zip)) {
+      return {
+        success: false,
+        error: "ZIP code must be 5 digits",
+      }
+    }
+
+    // Validate max price
+    if (maxPrice <= 0) {
+      return {
+        success: false,
+        error: "Maximum price must be greater than zero",
+      }
+    }
+
+    // Update the watchlist item
+    const { error } = await supabase
+      .from("watchlist")
+      .update({
+        keyword,
+        max_price: maxPrice,
+        zip,
+        radius,
+      })
+      .eq("id", id)
+
+    if (error) {
+      console.error("Error updating watchlist item:", error)
+      return {
+        success: false,
+        error: error.message || "Failed to update watchlist item",
+      }
+    }
+
+    // Revalidate the alerts page to show the updated data
+    revalidatePath("/alerts")
+
+    return {
+      success: true,
+      data: {
+        id,
+        keyword,
+        max_price: maxPrice,
+        zip,
+        radius,
+      },
+    }
+  } catch (error: any) {
+    console.error("Error updating watchlist item:", error)
     return {
       success: false,
       error: error.message || "An unexpected error occurred",

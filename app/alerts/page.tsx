@@ -1,7 +1,25 @@
+"use client"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { EditAlertDialog } from "@/components/edit-alert-dialog"
+import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { supabase } from "@/lib/supabaseClient"
+import { deleteWatchlistItem } from "@/app/actions"
+import { MoreVertical, Pencil, Trash2, Wifi } from "lucide-react"
+import type { RealtimeChannel } from "@supabase/supabase-js"
 
 // Placeholder images for different categories
 const categoryImages: Record<string, string> = {
@@ -33,65 +51,240 @@ function getImageForKeyword(keyword: string): string {
   return "/marketplace-item.png"
 }
 
-// Mock data as fallback
-const mockAlerts = [
-  {
-    id: 1,
-    keyword: "iPhone 13 Pro - Great Condition",
-    max_price: 499,
-    zip: "10001",
-    image: "/modern-smartphone.png",
-  },
-  {
-    id: 2,
-    keyword: "PlayStation 5 Disc Edition",
-    max_price: 350,
-    zip: "10002",
-    image: "/gaming-console-setup.png",
-  },
-  {
-    id: 3,
-    keyword: "Vintage Coffee Table",
-    max_price: 75,
-    zip: "10003",
-    image: "/modern-living-room-coffee-table.png",
-  },
-  {
-    id: 4,
-    keyword: "Mountain Bike - Trek",
-    max_price: 280,
-    zip: "10004",
-    image: "/mountain-bike-trail.png",
-  },
-]
+interface Alert {
+  id: string
+  keyword: string
+  max_price: number
+  zip: string
+  radius: number
+  image?: string
+  created_at?: string
+}
 
-export const revalidate = 0 // Revalidate this page on every request
+export default function AlertsPage() {
+  const { toast } = useToast()
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [deleteAlertId, setDeleteAlertId] = useState<string | null>(null)
+  const [editAlert, setEditAlert] = useState<Alert | null>(null)
+  const [realtimeConnected, setRealtimeConnected] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-export default async function AlertsPage() {
-  // Fetch watchlist items from Supabase
-  const { data: watchlistItems, error } = await supabase
-    .from("watchlist")
-    .select("*")
-    .order("created_at", { ascending: false })
+  // Handle alert update from edit dialog
+  const handleAlertUpdated = useCallback((updatedAlert: Alert) => {
+    setAlerts((currentAlerts) => currentAlerts.map((alert) => (alert.id === updatedAlert.id ? updatedAlert : alert)))
+  }, [])
 
-  // Use watchlist items if available, otherwise use mock data
-  const alerts =
-    watchlistItems && watchlistItems.length > 0
-      ? watchlistItems.map((item) => ({
-          ...item,
-          image: getImageForKeyword(item.keyword),
+  // Fetch alerts and set up real-time subscription
+  useEffect(() => {
+    let realtimeChannel: RealtimeChannel
+
+    async function fetchAlerts() {
+      try {
+        setLoading(true)
+        console.log("Fetching initial alerts data...")
+
+        // Fetch initial data
+        const { data, error } = await supabase.from("watchlist").select("*").order("created_at", { ascending: false })
+
+        if (error) {
+          throw error
+        }
+
+        console.log("Initial data fetched:", data)
+
+        // Add images to alerts
+        const alertsWithImages = data.map((alert) => ({
+          ...alert,
+          image: getImageForKeyword(alert.keyword),
         }))
-      : mockAlerts
+
+        setAlerts(alertsWithImages)
+
+        // Set up real-time subscription
+        console.log("Setting up real-time subscription...")
+        realtimeChannel = supabase
+          .channel("watchlist-changes")
+          .on(
+            "postgres_changes",
+            {
+              event: "*", // Listen to all changes (INSERT, UPDATE, DELETE)
+              schema: "public",
+              table: "watchlist",
+            },
+            (payload) => {
+              console.log("Real-time change received:", payload)
+
+              // Handle different types of changes
+              if (payload.eventType === "INSERT") {
+                const newAlert = payload.new as Alert
+                newAlert.image = getImageForKeyword(newAlert.keyword)
+
+                setAlerts((currentAlerts) => {
+                  // Check if the alert already exists to prevent duplicates
+                  const exists = currentAlerts.some((alert) => alert.id === newAlert.id)
+                  if (exists) return currentAlerts
+                  return [newAlert, ...currentAlerts]
+                })
+
+                toast({
+                  title: "New Alert Added",
+                  description: `Alert for "${newAlert.keyword}" has been added`,
+                  duration: 3000,
+                })
+              } else if (payload.eventType === "UPDATE") {
+                const updatedAlert = payload.new as Alert
+                updatedAlert.image = getImageForKeyword(updatedAlert.keyword)
+
+                console.log("Updating alert:", updatedAlert)
+
+                setAlerts((currentAlerts) => {
+                  return currentAlerts.map((alert) => {
+                    if (alert.id === updatedAlert.id) {
+                      console.log("Found alert to update:", alert.id)
+                      return { ...updatedAlert, image: getImageForKeyword(updatedAlert.keyword) }
+                    }
+                    return alert
+                  })
+                })
+
+                // Only show toast if this wasn't triggered by the current user's edit
+                if (!editAlert || editAlert.id !== updatedAlert.id) {
+                  toast({
+                    title: "Alert Updated",
+                    description: `Alert for "${updatedAlert.keyword}" has been updated`,
+                    duration: 3000,
+                  })
+                }
+              } else if (payload.eventType === "DELETE") {
+                const deletedAlertId = payload.old.id
+                console.log("Deleting alert:", deletedAlertId)
+
+                setAlerts((currentAlerts) => {
+                  return currentAlerts.filter((alert) => {
+                    const shouldKeep = alert.id !== deletedAlertId
+                    if (!shouldKeep) console.log("Removing alert:", alert.id)
+                    return shouldKeep
+                  })
+                })
+
+                // Only show toast if this wasn't triggered by the current user's delete
+                if (deleteAlertId !== deletedAlertId) {
+                  toast({
+                    title: "Alert Deleted",
+                    description: "An alert has been deleted",
+                    duration: 3000,
+                  })
+                }
+              }
+            },
+          )
+          .subscribe((status) => {
+            console.log("Realtime subscription status:", status)
+            setRealtimeConnected(status === "SUBSCRIBED")
+
+            if (status === "SUBSCRIBED") {
+              toast({
+                title: "Live Updates Active",
+                description: "You'll see changes to alerts in real-time",
+                duration: 3000,
+              })
+            }
+          })
+      } catch (err: any) {
+        console.error("Error fetching alerts:", err)
+        setError(err.message || "Failed to load alerts")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAlerts()
+
+    // Clean up subscription when component unmounts
+    return () => {
+      console.log("Cleaning up real-time subscription...")
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel)
+      }
+    }
+  }, [toast]) // Include toast in dependencies to avoid lint warnings
+
+  // Handle delete alert
+  const handleDeleteAlert = async () => {
+    if (!deleteAlertId || isDeleting) return
+
+    setIsDeleting(true)
+    try {
+      // Find the alert to delete
+      const alertToDelete = alerts.find((alert) => alert.id === deleteAlertId)
+
+      // Remove from UI immediately
+      setAlerts((currentAlerts) => currentAlerts.filter((alert) => alert.id !== deleteAlertId))
+
+      // Close the dialog
+      setDeleteAlertId(null)
+
+      // Show optimistic toast
+      toast({
+        title: "Deleting Alert...",
+        description: alertToDelete ? `Removing "${alertToDelete.keyword}"` : "Removing alert",
+        duration: 2000,
+      })
+
+      // Actually delete from database
+      const result = await deleteWatchlistItem(deleteAlertId)
+
+      if (!result.success) {
+        // If delete fails, restore the alert and show error
+        if (alertToDelete) {
+          setAlerts((currentAlerts) => [...currentAlerts, alertToDelete])
+        }
+
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Failed to delete alert",
+          duration: 3000,
+        })
+      }
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "An unexpected error occurred",
+        duration: 3000,
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="py-8 max-w-md mx-auto text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p>Loading alerts...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="py-8 max-w-md mx-auto">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center">Your Alerts</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold">Your Alerts</h1>
+        {realtimeConnected && (
+          <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+            <Wifi className="h-3 w-3 mr-1" />
+            <span>Live</span>
+          </div>
+        )}
+      </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          Error loading alerts. Please try again later.
-        </div>
-      )}
+      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
 
       {alerts.length === 0 ? (
         <div className="text-center py-8">
@@ -112,12 +305,39 @@ export default async function AlertsPage() {
                   />
                 </div>
                 <div className="w-2/3 flex flex-col">
-                  <CardHeader className="p-3 pb-0">
-                    <CardTitle className="text-base font-medium line-clamp-2">{alert.keyword}</CardTitle>
+                  <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
+                    <CardTitle className="text-base font-medium line-clamp-2 pr-6">{alert.keyword}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="-mt-1 -mr-2">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditAlert(alert)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeleteAlertId(alert.id)}
+                          className="text-red-600 focus:text-red-600"
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </CardHeader>
                   <CardContent className="p-3 pt-1 pb-0 text-sm">
                     <p className="font-bold text-lg">${alert.max_price}</p>
-                    <p className="text-gray-500">ZIP: {alert.zip}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">ZIP: {alert.zip}</span>
+                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                        {alert.radius || 1} {(alert.radius || 1) === 1 ? "mile" : "miles"}
+                      </span>
+                    </div>
                   </CardContent>
                   <CardFooter className="p-3 mt-auto">
                     <Button size="sm" className="w-full">
@@ -129,6 +349,40 @@ export default async function AlertsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteAlertId} onOpenChange={(open) => !open && setDeleteAlertId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this alert. You won't receive any more notifications for it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAlert}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Alert Dialog */}
+      {editAlert && (
+        <EditAlertDialog
+          alert={editAlert}
+          open={!!editAlert}
+          onOpenChange={(open) => {
+            if (!open) setEditAlert(null)
+          }}
+          onAlertUpdated={handleAlertUpdated}
+        />
       )}
     </div>
   )

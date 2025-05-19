@@ -5,13 +5,14 @@ CREATE TABLE IF NOT EXISTS watchlist (
   keyword TEXT NOT NULL,
   zip TEXT NOT NULL,
   max_price INTEGER NOT NULL,
+  radius INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Optional: Add some sample data
-INSERT INTO watchlist (keyword, zip, max_price)
+INSERT INTO watchlist (keyword, zip, max_price, radius)
 VALUES 
-  ('iPhone 13', '10001', 500),
-  ('PlayStation 5', '10002', 400),
-  ('Vintage Coffee Table', '10003', 100),
-  ('Mountain Bike', '10004', 300);
+  ('iPhone 13', '10001', 500, 5),
+  ('PlayStation 5', '10002', 400, 10),
+  ('Vintage Coffee Table', '10003', 100, 15),
+  ('Mountain Bike', '10004', 300, 20);
