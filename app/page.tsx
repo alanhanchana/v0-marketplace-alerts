@@ -19,6 +19,24 @@ export default function Home() {
   const [marketplace, setMarketplace] = useState<"craigslist" | "facebook">("craigslist")
   const formRef = useRef<HTMLFormElement>(null)
   const submitButtonRef = useRef<HTMLButtonElement>(null)
+  const sliderRef = useRef<HTMLInputElement>(null)
+
+  // Update slider background on mount and when radius changes
+  useEffect(() => {
+    updateSliderBackground()
+  }, [radius])
+
+  // Function to update the slider background
+  const updateSliderBackground = () => {
+    if (!sliderRef.current) return
+
+    const min = Number.parseInt(sliderRef.current.min) || 0
+    const max = Number.parseInt(sliderRef.current.max) || 100
+    const value = radius
+    const percentage = ((value - min) / (max - min)) * 100
+
+    sliderRef.current.style.background = `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`
+  }
 
   // Prevent accidental double submissions
   useEffect(() => {
@@ -146,7 +164,7 @@ export default function Home() {
                   >
                     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                   </svg>
-                  Facebook
+                  FB Marketplace
                 </button>
               </div>
             </div>
@@ -223,13 +241,17 @@ export default function Home() {
                 <div className="flex-grow">
                   <div>
                     <input
+                      ref={sliderRef}
                       type="range"
                       id="radius-slider"
                       min="0"
                       max="100"
                       value={radius}
                       onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200"
+                      style={{
+                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${radius}%, #e5e7eb ${radius}%, #e5e7eb 100%)`,
+                      }}
                       disabled={isSubmitting}
                     />
                     <div className="flex justify-between text-xs text-gray-500 px-1 mt-1">
