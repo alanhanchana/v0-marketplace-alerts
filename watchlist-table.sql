@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS watchlist (
   zip TEXT NOT NULL,
   max_price INTEGER NOT NULL,
   radius INTEGER DEFAULT 1,
-  marketplace TEXT DEFAULT 'craigslist',
+  marketplace TEXT DEFAULT 'all',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -15,5 +15,5 @@ INSERT INTO watchlist (keyword, zip, max_price, radius, marketplace)
 VALUES 
   ('iPhone 13', '10001', 500, 5, 'craigslist'),
   ('PlayStation 5', '10002', 400, 10, 'facebook'),
-  ('Vintage Coffee Table', '10003', 100, 15, 'craigslist'),
-  ('Mountain Bike', '10004', 300, 20, 'facebook');
+  ('Vintage Coffee Table', '10003', 100, 15, 'offerup'),
+  ('Mountain Bike', '10004', 300, 20, 'all');

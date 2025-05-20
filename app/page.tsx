@@ -1,5 +1,7 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
+import type React from "react"
+
 import { useRouter } from "next/navigation"
 import { createWatchlistItem } from "./actions"
 import { Button } from "@/components/ui/button"
@@ -9,6 +11,10 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabaseClient"
+
+// Type for marketplace options
+type MarketplaceOption = "all" | "craigslist" | "facebook" | "offerup"
 
 export default function Home() {
   const router = useRouter()
@@ -16,10 +22,63 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [radius, setRadius] = useState(1)
-  const [marketplace, setMarketplace] = useState<"craigslist" | "facebook">("craigslist")
+  const [marketplace, setMarketplace] = useState<MarketplaceOption>("all")
+  const [maxPrice, setMaxPrice] = useState("")
+  const [keyword, setKeyword] = useState("")
+  const [zipCode, setZipCode] = useState("")
+  const [isFormValid, setIsFormValid] = useState(false)
+  const [searchTermCount, setSearchTermCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
   const formRef = useRef<HTMLFormElement>(null)
   const submitButtonRef = useRef<HTMLButtonElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
+
+  // Check form validity whenever inputs change
+  useEffect(() => {
+    const isValid = keyword.trim() !== "" && maxPrice.trim() !== "" && zipCode.trim() !== "" && /^\d{5}$/.test(zipCode)
+    setIsFormValid(isValid)
+  }, [keyword, maxPrice, zipCode])
+
+  // Get the count of existing search terms
+  useEffect(() => {
+    async function fetchSearchTermCount() {
+      setIsLoading(true)
+      try {
+        const { count, error } = await supabase.from("watchlist").select("*", { count: "exact", head: true })
+
+        if (error) {
+          console.error("Error fetching search term count:", error)
+          return
+        }
+
+        setSearchTermCount(count || 0)
+      } catch (err) {
+        console.error("Error:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSearchTermCount()
+  }, [])
+
+  // Format number with commas
+  const formatNumberWithCommas = (value: string) => {
+    // Remove any non-digit characters
+    const digitsOnly = value.replace(/\D/g, "")
+
+    // Format with commas
+    if (digitsOnly) {
+      return new Intl.NumberFormat("en-US").format(Number.parseInt(digitsOnly))
+    }
+    return ""
+  }
+
+  // Handle max price input change
+  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatNumberWithCommas(e.target.value)
+    setMaxPrice(formattedValue)
+  }
 
   // Update slider background on mount and when radius changes
   useEffect(() => {
@@ -70,6 +129,12 @@ export default function Home() {
       return
     }
 
+    // Check if we've reached the limit
+    if (searchTermCount >= 5) {
+      setError("You can only have 5 saved search terms. Please delete one to add more.")
+      return
+    }
+
     setIsSubmitting(true)
     setError(null)
 
@@ -77,12 +142,17 @@ export default function Home() {
       // Add marketplace to form data
       formData.append("marketplace", marketplace)
 
+      // Replace the formatted max price with the raw number
+      formData.delete("maxPrice")
+      const rawMaxPrice = maxPrice.replace(/,/g, "")
+      formData.append("maxPrice", rawMaxPrice)
+
       const result = await createWatchlistItem(formData)
 
       if (result.success && result.data) {
         // Show success toast with the keyword and zip
         toast({
-          title: "🔔 Alert Created",
+          title: "🔔 Search Term Added",
           description: `Now watching deals for "${result.data.keyword}" near ${result.data.zip}`,
           duration: 3000,
         })
@@ -114,13 +184,45 @@ export default function Home() {
             </Alert>
           )}
 
+          {searchTermCount >= 5 && (
+            <Alert className="mb-4 text-sm bg-amber-50 text-amber-800 border-amber-200">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                You have reached the maximum of 5 saved search terms. Please delete one to add more.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form ref={formRef} action={handleSubmit} className="space-y-4" noValidate>
             {/* Marketplace Toggle */}
             <div className="flex justify-center mb-1">
-              <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg">
+              <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg flex-wrap justify-center">
                 <button
                   type="button"
-                  className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
+                    marketplace === "all" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  onClick={() => setMarketplace("all")}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-3.5 w-3.5 mr-1"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                    <path d="M2 12h20" />
+                  </svg>
+                  All Markets
+                </button>
+                <button
+                  type="button"
+                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
                     marketplace === "craigslist"
                       ? "bg-white shadow-sm text-gray-800"
                       : "text-gray-500 hover:text-gray-700"
@@ -129,7 +231,7 @@ export default function Home() {
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1.5"
+                    className="h-3.5 w-3.5 mr-1"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -145,7 +247,7 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
-                  className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
                     marketplace === "facebook"
                       ? "bg-white shadow-sm text-gray-800"
                       : "text-gray-500 hover:text-gray-700"
@@ -154,7 +256,7 @@ export default function Home() {
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-1.5"
+                    className="h-3.5 w-3.5 mr-1"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -165,6 +267,27 @@ export default function Home() {
                     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                   </svg>
                   FB Marketplace
+                </button>
+                <button
+                  type="button"
+                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
+                    marketplace === "offerup" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  onClick={() => setMarketplace("offerup")}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-3.5 w-3.5 mr-1"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z" />
+                  </svg>
+                  OfferUp
                 </button>
               </div>
             </div>
@@ -179,7 +302,9 @@ export default function Home() {
                 placeholder="e.g. iPhone, PlayStation, Furniture"
                 className="h-11 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
                 required
-                disabled={isSubmitting}
+                disabled={isSubmitting || searchTermCount >= 5}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
               />
             </div>
 
@@ -194,15 +319,14 @@ export default function Home() {
                   <Input
                     id="maxPrice"
                     name="maxPrice"
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     placeholder="500"
+                    value={maxPrice}
+                    onChange={handleMaxPriceChange}
                     className="h-11 text-base pl-8 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
                     required
-                    min="1"
-                    step="1"
-                    disabled={isSubmitting}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
+                    disabled={isSubmitting || searchTermCount >= 5}
                   />
                 </div>
               </div>
@@ -221,8 +345,10 @@ export default function Home() {
                   maxLength={5}
                   minLength={5}
                   inputMode="numeric"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || searchTermCount >= 5}
                   title="Please enter a valid 5-digit ZIP code"
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
                 />
               </div>
             </div>
@@ -252,7 +378,7 @@ export default function Home() {
                       style={{
                         background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${radius}%, #e5e7eb ${radius}%, #e5e7eb 100%)`,
                       }}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || searchTermCount >= 5}
                     />
                     <div className="flex justify-between text-xs text-gray-500 px-1 mt-1">
                       <span>0</span>
@@ -274,7 +400,7 @@ export default function Home() {
                     value={radius}
                     onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value || "0"))}
                     className="h-9 text-center text-sm"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || searchTermCount >= 5}
                     aria-label="Radius in miles"
                   />
                 </div>
@@ -287,7 +413,7 @@ export default function Home() {
               ref={submitButtonRef}
               type="submit"
               className="w-full h-12 text-base font-medium mt-4 transition-all touch-manipulation"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid || searchTermCount >= 5 || isLoading}
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
@@ -313,6 +439,10 @@ export default function Home() {
                   </svg>
                   Processing...
                 </span>
+              ) : isLoading ? (
+                "Loading..."
+              ) : searchTermCount >= 5 ? (
+                "Maximum Limit Reached"
               ) : (
                 "Start Watching"
               )}

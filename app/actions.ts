@@ -45,6 +45,24 @@ export async function createWatchlistItem(formData: FormData) {
 
     console.log("Creating watchlist item:", { keyword, maxPrice, zip, radius, marketplace })
 
+    // Check if we've reached the limit of 5 search terms
+    const { count, error: countError } = await supabase.from("watchlist").select("*", { count: "exact", head: true })
+
+    if (countError) {
+      console.error("Error checking search term count:", countError)
+      return {
+        success: false,
+        error: "Failed to check search term count",
+      }
+    }
+
+    if (count && count >= 5) {
+      return {
+        success: false,
+        error: "You can only have 5 saved search terms. Please delete one to add more.",
+      }
+    }
+
     // Try to insert the data
     const { error } = await supabase.from("watchlist").insert([
       {
@@ -114,6 +132,33 @@ export async function deleteWatchlistItem(id: string) {
     }
   } catch (error: any) {
     console.error("Error deleting watchlist item:", error)
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred",
+    }
+  }
+}
+
+export async function deleteAllWatchlistItems() {
+  try {
+    const { error } = await supabase.from("watchlist").delete().neq("id", "placeholder")
+
+    if (error) {
+      console.error("Error deleting all watchlist items:", error)
+      return {
+        success: false,
+        error: error.message || "Failed to delete all watchlist items",
+      }
+    }
+
+    // Revalidate the alerts page to show the updated data
+    revalidatePath("/alerts")
+
+    return {
+      success: true,
+    }
+  } catch (error: any) {
+    console.error("Error deleting all watchlist items:", error)
     return {
       success: false,
       error: error.message || "An unexpected error occurred",

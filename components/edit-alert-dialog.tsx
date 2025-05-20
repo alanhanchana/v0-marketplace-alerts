@@ -19,6 +19,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
+// Type for marketplace options
+type MarketplaceOption = "all" | "craigslist" | "facebook" | "offerup"
+
 interface EditAlertDialogProps {
   alert: {
     id: string
@@ -38,15 +41,34 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [radius, setRadius] = useState(alert.radius || 1)
-  const [marketplace, setMarketplace] = useState<"craigslist" | "facebook">(
-    (alert.marketplace as "craigslist" | "facebook") || "craigslist",
-  )
+  const [marketplace, setMarketplace] = useState<MarketplaceOption>((alert.marketplace as MarketplaceOption) || "all")
   const [formValues, setFormValues] = useState({
     keyword: alert.keyword,
-    maxPrice: alert.max_price,
+    maxPrice: alert.max_price.toLocaleString("en-US"),
     zip: alert.zip,
   })
   const sliderRef = useRef<HTMLInputElement>(null)
+
+  // Format number with commas
+  const formatNumberWithCommas = (value: string) => {
+    // Remove any non-digit characters
+    const digitsOnly = value.replace(/\D/g, "")
+
+    // Format with commas
+    if (digitsOnly) {
+      return new Intl.NumberFormat("en-US").format(Number.parseInt(digitsOnly))
+    }
+    return ""
+  }
+
+  // Handle max price input change
+  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatNumberWithCommas(e.target.value)
+    setFormValues({
+      ...formValues,
+      maxPrice: formattedValue,
+    })
+  }
 
   // Update slider background on mount and when radius changes
   useEffect(() => {
@@ -94,7 +116,11 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
       const formData = new FormData()
       formData.append("id", alert.id)
       formData.append("keyword", formValues.keyword)
-      formData.append("maxPrice", formValues.maxPrice.toString())
+
+      // Remove commas from price before submitting
+      const rawMaxPrice = formValues.maxPrice.replace(/,/g, "")
+      formData.append("maxPrice", rawMaxPrice)
+
       formData.append("zip", formValues.zip)
       formData.append("radius", radius.toString())
       formData.append("marketplace", marketplace)
@@ -102,7 +128,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
       // Show optimistic toast immediately
       toast({
         title: "Saving Changes...",
-        description: "Updating your alert settings",
+        description: "Updating your search term settings",
         duration: 2000,
       })
 
@@ -123,12 +149,12 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
         onOpenChange(false)
 
         toast({
-          title: "Alert Updated",
-          description: "Your alert has been updated successfully",
+          title: "Search Term Updated",
+          description: "Your search term has been updated successfully",
           duration: 3000,
         })
       } else {
-        setError(result.error || "Failed to update alert")
+        setError(result.error || "Failed to update search term")
       }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred")
@@ -141,8 +167,8 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] z-50">
         <DialogHeader>
-          <DialogTitle>Edit Alert</DialogTitle>
-          <DialogDescription>Update your alert settings. Click save when you're done.</DialogDescription>
+          <DialogTitle>Edit Search Term</DialogTitle>
+          <DialogDescription>Update your search term settings. Click save when you're done.</DialogDescription>
         </DialogHeader>
 
         {error && (
@@ -157,10 +183,33 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
 
           {/* Marketplace Toggle */}
           <div className="flex justify-center mb-1">
-            <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg">
+            <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg flex-wrap justify-center">
               <button
                 type="button"
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
+                className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
+                  marketplace === "all" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setMarketplace("all")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3.5 w-3.5 mr-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                  <path d="M2 12h20" />
+                </svg>
+                All Markets
+              </button>
+              <button
+                type="button"
+                className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
                   marketplace === "craigslist"
                     ? "bg-white shadow-sm text-gray-800"
                     : "text-gray-500 hover:text-gray-700"
@@ -169,7 +218,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1.5"
+                  className="h-3.5 w-3.5 mr-1"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -185,14 +234,14 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
               </button>
               <button
                 type="button"
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
+                className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
                   marketplace === "facebook" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"
                 }`}
                 onClick={() => setMarketplace("facebook")}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1.5"
+                  className="h-3.5 w-3.5 mr-1"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -203,6 +252,27 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
                   <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                 </svg>
                 FB Marketplace
+              </button>
+              <button
+                type="button"
+                className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 ${
+                  marketplace === "offerup" ? "bg-white shadow-sm text-gray-800" : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setMarketplace("offerup")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3.5 w-3.5 mr-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z" />
+                </svg>
+                OfferUp
               </button>
             </div>
           </div>
@@ -228,12 +298,12 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
                 <Input
                   id="edit-maxPrice"
                   name="maxPrice"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formValues.maxPrice}
-                  onChange={handleInputChange}
+                  onChange={handleMaxPriceChange}
                   className="pl-8"
                   required
-                  min="1"
                   disabled={isSubmitting}
                 />
               </div>
