@@ -1,107 +1,48 @@
 "use client"
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { EditAlertDialog } from "@/components/edit-alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
-import Image from "next/image"
 import { supabase } from "@/lib/supabaseClient"
 import { deleteWatchlistItem } from "@/app/actions"
-import { MoreVertical, Pencil, Trash2, Search, BellOff, Bell, ArrowUpDown, Trash } from "lucide-react"
+import { Pencil, Trash2, Search, Bell, Plus, ArrowUpDown } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { useRouter } from "next/navigation"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// Placeholder images for different categories
-const categoryImages: Record<string, string> = {
-  iphone: "/modern-smartphone.png",
-  phone: "/modern-smartphone.png",
-  smartphone: "/modern-smartphone.png",
-  playstation: "/gaming-console-setup.png",
-  xbox: "/gaming-console-setup.png",
-  nintendo: "/gaming-console-setup.png",
-  gaming: "/gaming-console-setup.png",
-  furniture: "/modern-living-room-coffee-table.png",
-  table: "/modern-living-room-coffee-table.png",
-  chair: "/modern-living-room-coffee-table.png",
-  bike: "/mountain-bike-trail.png",
-  bicycle: "/mountain-bike-trail.png",
-}
-
-// Function to get an image based on keyword
-function getImageForKeyword(keyword: string): string {
-  const lowerKeyword = keyword.toLowerCase()
-
-  for (const [key, value] of Object.entries(categoryImages)) {
-    if (lowerKeyword.includes(key)) {
-      return value
-    }
+// Function to get city and state from ZIP code
+function getCityStateFromZip(zip: string): { city: string; state: string } {
+  // This would normally be an API call or database lookup
+  // For demo purposes, we'll use a simple mapping
+  const zipMappings: Record<string, { city: string; state: string }> = {
+    "10001": { city: "New York", state: "NY" },
+    "90210": { city: "Beverly Hills", state: "CA" },
+    "60601": { city: "Chicago", state: "IL" },
+    "75001": { city: "Dallas", state: "TX" },
+    "33101": { city: "Miami", state: "FL" },
+    "91765": { city: "Diamond Bar", state: "CA" },
+    // Add more as needed
   }
 
-  // Default image if no match
-  return "/marketplace-item.png"
-}
-
-// Function to get marketplace display text
-function getMarketplaceDisplay(marketplace: string): string {
-  switch (marketplace) {
-    case "craigslist":
-      return "CL"
-    case "facebook":
-      return "FB"
-    case "offerup":
-      return "OU"
-    case "all":
-      return "ALL"
-    default:
-      return marketplace.substring(0, 2).toUpperCase()
-  }
-}
-
-// Function to get marketplace badge color
-function getMarketplaceBadgeColor(marketplace: string): string {
-  switch (marketplace) {
-    case "craigslist":
-      return "bg-purple-900"
-    case "facebook":
-      return "bg-blue-800"
-    case "offerup":
-      return "bg-green-800"
-    case "all":
-      return "bg-gray-800"
-    default:
-      return "bg-gray-800"
-  }
+  return zipMappings[zip] || { city: "Unknown", state: "??" }
 }
 
 interface Alert {
   id: string
   keyword: string
+  min_price?: number
   max_price: number
   zip: string
   radius: number
   marketplace?: string
-  image?: string
   created_at?: string
   muted?: boolean
   hasNewListings?: boolean
   newListingsCount?: number
 }
 
-type MarketplaceFilter = "all" | "craigslist" | "facebook" | "offerup"
-type SortOption = "newest" | "oldest" | "price-high" | "price-low" | "a-z" | "z-a"
+type MarketplaceFilter = "craigslist" | "facebook" | "offerup"
+type SortOption = "price-low" | "price-high" | "newest" | "oldest"
 
 export default function AlertsPage() {
   const router = useRouter()
@@ -113,12 +54,15 @@ export default function AlertsPage() {
   const [deleteAlertId, setDeleteAlertId] = useState<string | null>(null)
   const [editAlert, setEditAlert] = useState<Alert | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isDeletingAll, setIsDeletingAll] = useState(false)
-  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
-  const [marketplaceFilter, setMarketplaceFilter] = useState<MarketplaceFilter>("all")
+  const [marketplaceFilter, setMarketplaceFilter] = useState<MarketplaceFilter>("craigslist")
   const [sortOption, setSortOption] = useState<SortOption>("newest")
   const deleteInProgressRef = useRef(false)
   const alertDialogOpenRef = useRef(false)
+  const [searchTermCounts, setSearchTermCounts] = useState<Record<MarketplaceFilter, number>>({
+    craigslist: 0,
+    facebook: 0,
+    offerup: 0,
+  })
 
   // Handle alert update from edit dialog
   const handleAlertUpdated = useCallback((updatedAlert: Alert) => {
@@ -138,57 +82,10 @@ export default function AlertsPage() {
     }
   }
 
-  // Toggle mute status for an alert
-  const toggleMute = (alertId: string) => {
-    setAlerts((currentAlerts) =>
-      currentAlerts.map((alert) => (alert.id === alertId ? { ...alert, muted: !alert.muted } : alert)),
-    )
-
-    // In a real app, you would save this to the database
-    toast({
-      title: "Notification settings updated",
-      description: "Your changes have been saved",
-      duration: 2000,
-    })
-  }
-
-  // Delete all alerts
-  const deleteAllAlerts = async () => {
-    setIsDeleteAllOpen(false)
-    setIsDeletingAll(true)
-
-    // Show optimistic toast
-    toast({
-      title: "Deleting all search terms...",
-      duration: 2000,
-    })
-
-    try {
-      // In a real app, we would delete all from the database
-      // For now, we'll use a simple approach to delete each alert
-      for (const alert of alerts) {
-        await supabase.from("watchlist").delete().eq("id", alert.id)
-      }
-
-      // Clear the state
-      setAlerts([])
-
-      toast({
-        title: "All search terms deleted",
-        description: "Your saved search terms have been removed",
-        duration: 3000,
-      })
-    } catch (error) {
-      console.error("Error deleting all alerts:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete all search terms",
-        duration: 3000,
-      })
-    } finally {
-      setIsDeletingAll(false)
-    }
+  // Handle add new search term
+  const handleAddNewSearchTerm = () => {
+    // Navigate to home page with the current marketplace filter
+    router.push(`/?marketplace=${marketplaceFilter}`)
   }
 
   // Apply filters and sorting
@@ -196,34 +93,53 @@ export default function AlertsPage() {
     let result = [...alerts]
 
     // Apply marketplace filter
-    if (marketplaceFilter !== "all") {
-      result = result.filter((alert) => alert.marketplace === marketplaceFilter || alert.marketplace === "all")
-    }
+    result = result.filter((alert) => {
+      // If the alert has no marketplace specified, don't show it in any filter
+      if (!alert.marketplace) return false
+
+      // Only show alerts that match the selected marketplace
+      return alert.marketplace === marketplaceFilter
+    })
 
     // Apply sorting
     switch (sortOption) {
+      case "price-low":
+        result.sort((a, b) => a.max_price - b.max_price)
+        break
+      case "price-high":
+        result.sort((a, b) => b.max_price - a.max_price)
+        break
       case "newest":
         result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
         break
       case "oldest":
         result.sort((a, b) => new Date(a.created_at || "").getTime() - new Date(b.created_at || "").getTime())
         break
-      case "price-high":
-        result.sort((a, b) => b.max_price - a.max_price)
-        break
-      case "price-low":
-        result.sort((a, b) => a.max_price - b.max_price)
-        break
-      case "a-z":
-        result.sort((a, b) => a.keyword.localeCompare(b.keyword))
-        break
-      case "z-a":
-        result.sort((a, b) => b.keyword.localeCompare(a.keyword))
-        break
+      default:
+        // Default to newest first
+        result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
     }
 
     setFilteredAlerts(result)
   }, [alerts, marketplaceFilter, sortOption])
+
+  // Count alerts by marketplace
+  useEffect(() => {
+    const counts: Record<MarketplaceFilter, number> = {
+      craigslist: 0,
+      facebook: 0,
+      offerup: 0,
+    }
+
+    alerts.forEach((alert) => {
+      const market = alert.marketplace as MarketplaceFilter
+      if (market && counts[market] !== undefined) {
+        counts[market]++
+      }
+    })
+
+    setSearchTermCounts(counts)
+  }, [alerts])
 
   // Fetch alerts and set up real-time subscription
   useEffect(() => {
@@ -243,16 +159,15 @@ export default function AlertsPage() {
 
         console.log("Initial data fetched:", data)
 
-        // Add images to alerts and randomly add hasNewListings for demo
-        const alertsWithImages = data.map((alert) => ({
+        // Add random hasNewListings for demo
+        const alertsWithNewListings = data.map((alert) => ({
           ...alert,
-          image: getImageForKeyword(alert.keyword),
           muted: false, // Default to notifications enabled
           hasNewListings: Math.random() > 0.5, // Randomly show new listings indicator for demo
           newListingsCount: Math.floor(Math.random() * 10) + 1, // Random number of new listings (1-10)
         }))
 
-        setAlerts(alertsWithImages)
+        setAlerts(alertsWithNewListings)
 
         // Set up real-time subscription
         console.log("Setting up real-time subscription...")
@@ -271,7 +186,6 @@ export default function AlertsPage() {
               // Handle different types of changes
               if (payload.eventType === "INSERT") {
                 const newAlert = payload.new as Alert
-                newAlert.image = getImageForKeyword(newAlert.keyword)
                 newAlert.hasNewListings = true // New alerts have new listings
                 newAlert.newListingsCount = Math.floor(Math.random() * 5) + 1 // Random number of new listings (1-5)
                 newAlert.muted = false // Default to notifications enabled
@@ -281,11 +195,16 @@ export default function AlertsPage() {
                   const exists = currentAlerts.some((alert) => alert.id === newAlert.id)
                   if (exists) return currentAlerts
 
-                  // Check if we've reached the limit of 5 alerts
-                  if (currentAlerts.length >= 5) {
+                  // Count alerts for this marketplace
+                  const marketplaceCount = currentAlerts.filter(
+                    (alert) => alert.marketplace === newAlert.marketplace,
+                  ).length
+
+                  // Check if we've reached the limit of 5 alerts for this marketplace
+                  if (marketplaceCount >= 5) {
                     toast({
                       title: "Maximum limit reached",
-                      description: "You can only have 5 saved search terms. Please delete one to add more.",
+                      description: `You can only have 5 saved search terms for ${newAlert.marketplace}. Please delete one to add more.`,
                       variant: "destructive",
                       duration: 5000,
                     })
@@ -302,7 +221,6 @@ export default function AlertsPage() {
                 })
               } else if (payload.eventType === "UPDATE") {
                 const updatedAlert = payload.new as Alert
-                updatedAlert.image = getImageForKeyword(updatedAlert.keyword)
 
                 console.log("Updating alert:", updatedAlert)
 
@@ -312,7 +230,6 @@ export default function AlertsPage() {
                       console.log("Found alert to update:", alert.id)
                       return {
                         ...updatedAlert,
-                        image: getImageForKeyword(updatedAlert.keyword),
                         muted: alert.muted, // Preserve mute state
                         hasNewListings: alert.hasNewListings, // Preserve new listings state
                         newListingsCount: alert.newListingsCount, // Preserve new listings count
@@ -379,22 +296,19 @@ export default function AlertsPage() {
   }, [deleteAlertId])
 
   // Handle delete alert
-  const handleDeleteAlert = async () => {
-    if (!deleteAlertId || isDeleting) return
+  const handleDeleteAlert = async (id: string) => {
+    if (isDeleting) return
 
     setIsDeleting(true)
     deleteInProgressRef.current = true
 
     try {
       // Find the alert to delete
-      const alertToDelete = alerts.find((alert) => alert.id === deleteAlertId)
-      const idToDelete = deleteAlertId
+      const alertToDelete = alerts.find((alert) => alert.id === id)
+      const idToDelete = id
 
       // Remove from UI immediately
       setAlerts((currentAlerts) => currentAlerts.filter((alert) => alert.id !== idToDelete))
-
-      // Close the dialog
-      setDeleteAlertId(null)
 
       // Show optimistic toast
       toast({
@@ -435,13 +349,6 @@ export default function AlertsPage() {
     }
   }
 
-  // Handle dialog close
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      setDeleteAlertId(null)
-    }
-  }
-
   // Format price with dollar sign and commas
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -450,6 +357,95 @@ export default function AlertsPage() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price)
+  }
+
+  // Get marketplace tab style
+  const getMarketplaceTabStyle = (marketplace: MarketplaceFilter) => {
+    switch (marketplace) {
+      case "craigslist":
+        return marketplaceFilter === marketplace
+          ? "bg-purple-100 text-purple-800 border-b-2 border-purple-500"
+          : "text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+      case "facebook":
+        return marketplaceFilter === marketplace
+          ? "bg-blue-100 text-blue-800 border-b-2 border-blue-500"
+          : "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+      case "offerup":
+        return marketplaceFilter === marketplace
+          ? "bg-green-100 text-green-800 border-b-2 border-green-500"
+          : "text-green-600 hover:text-green-800 hover:bg-green-50"
+      default:
+        return ""
+    }
+  }
+
+  // Get marketplace icon
+  const getMarketplaceIcon = (marketplaceOption: MarketplaceFilter) => {
+    switch (marketplaceOption) {
+      case "craigslist":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 7V4h16v3" />
+            <path d="M9 20h6" />
+            <path d="M12 4v16" />
+          </svg>
+        )
+      case "facebook":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+          </svg>
+        )
+      case "offerup":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z" />
+          </svg>
+        )
+    }
+  }
+
+  // Get sort option label
+  const getSortOptionLabel = (option: SortOption): string => {
+    switch (option) {
+      case "price-low":
+        return "Price: Low to High"
+      case "price-high":
+        return "Price: High to Low"
+      case "newest":
+        return "Newest First"
+      case "oldest":
+        return "Oldest First"
+      default:
+        return "Sort by"
+    }
   }
 
   if (loading) {
@@ -470,59 +466,64 @@ export default function AlertsPage() {
       </div>
 
       {/* Marketplace filter tabs */}
-      <Tabs
-        defaultValue="all"
-        className="mb-4"
-        value={marketplaceFilter}
-        onValueChange={(value) => setMarketplaceFilter(value as MarketplaceFilter)}
-      >
-        <TabsList className="w-full grid grid-cols-4 h-9">
-          <TabsTrigger value="all" className="text-xs">
-            All Markets
-          </TabsTrigger>
-          <TabsTrigger value="craigslist" className="text-xs">
+      <div className="mb-4 border-b">
+        <div className="flex">
+          <button
+            onClick={() => setMarketplaceFilter("craigslist")}
+            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${getMarketplaceTabStyle(
+              "craigslist",
+            )}`}
+          >
+            {getMarketplaceIcon("craigslist")}
             Craigslist
-          </TabsTrigger>
-          <TabsTrigger value="facebook" className="text-xs">
+            <span className="ml-1 text-xs opacity-75">({searchTermCounts.craigslist}/5)</span>
+          </button>
+          <button
+            onClick={() => setMarketplaceFilter("facebook")}
+            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${getMarketplaceTabStyle(
+              "facebook",
+            )}`}
+          >
+            {getMarketplaceIcon("facebook")}
             FB Marketplace
-          </TabsTrigger>
-          <TabsTrigger value="offerup" className="text-xs">
+            <span className="ml-1 text-xs opacity-75">({searchTermCounts.facebook}/5)</span>
+          </button>
+          <button
+            onClick={() => setMarketplaceFilter("offerup")}
+            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${getMarketplaceTabStyle(
+              "offerup",
+            )}`}
+          >
+            {getMarketplaceIcon("offerup")}
             OfferUp
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+            <span className="ml-1 text-xs opacity-75">({searchTermCounts.offerup}/5)</span>
+          </button>
+        </div>
+      </div>
 
-      {/* Sort and filter controls */}
+      {/* Sort and Add New buttons */}
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
-              <div className="flex items-center">
-                <ArrowUpDown className="mr-2 h-3 w-3" />
-                <SelectValue placeholder="Sort by" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="a-z">A to Z</SelectItem>
-              <SelectItem value="z-a">Z to A</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs h-8 flex items-center gap-1"
+            onClick={() => setSortOption(sortOption === "price-low" ? "price-high" : "price-low")}
+          >
+            <ArrowUpDown className="h-3 w-3 mr-1" />
+            {getSortOptionLabel(sortOption)}
+          </Button>
         </div>
 
-        {alerts.length > 0 && (
+        {searchTermCounts[marketplaceFilter] < 5 && (
           <Button
             variant="outline"
             size="sm"
-            className="text-xs h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => setIsDeleteAllOpen(true)}
-            disabled={isDeletingAll}
+            className="text-xs h-8 text-primary hover:text-primary-foreground hover:bg-primary"
+            onClick={handleAddNewSearchTerm}
           >
-            <Trash className="mr-1 h-3 w-3" />
-            Delete All
+            <Plus className="mr-1 h-3 w-3" />
+            Add New
           </Button>
         )}
       </div>
@@ -530,165 +531,92 @@ export default function AlertsPage() {
       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
 
       {filteredAlerts.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No search terms found. Add some on the home page!</p>
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <p className="text-gray-500">No search terms found for {marketplaceFilter}.</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={handleAddNewSearchTerm}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Search Term
+          </Button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredAlerts.map((alert) => (
-            <Card key={alert.id} className="overflow-hidden border-none shadow-md">
-              <div className="flex">
-                <div className="w-1/3 relative">
-                  <Image
-                    src={alert.image || "/placeholder.svg"}
-                    alt={alert.keyword}
-                    width={300}
-                    height={200}
-                    className="h-full object-cover"
-                  />
-                  {alert.marketplace && (
-                    <div
-                      className={`absolute top-1 left-1 ${getMarketplaceBadgeColor(alert.marketplace)} text-white text-xs px-1.5 py-0.5 rounded`}
+        <div className="space-y-3">
+          {filteredAlerts.map((alert) => {
+            // Get city and state from ZIP
+            const { city, state } = getCityStateFromZip(alert.zip)
+            const marketplaceType = (alert.marketplace as MarketplaceFilter) || "craigslist"
+
+            return (
+              <Card key={alert.id} className="border shadow-sm">
+                <CardHeader className="p-3 pb-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center">
+                      {getMarketplaceIcon(marketplaceType)}
+                      <CardTitle className="text-base font-medium">{alert.keyword}</CardTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      onClick={() => handleDeleteAlert(alert.id)}
                     >
-                      {getMarketplaceDisplay(alert.marketplace)}
-                    </div>
-                  )}
-                </div>
-                <div className="w-2/3 flex flex-col">
-                  <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
-                    <div className="flex items-start gap-2">
-                      <CardTitle className="text-base font-medium line-clamp-2 pr-6">{alert.keyword}</CardTitle>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="-mt-1 -mr-2">
-                          <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditAlert(alert)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toggleMute(alert.id)}>
-                          {alert.muted ? (
-                            <>
-                              <Bell className="mr-2 h-4 w-4" />
-                              Unmute Notifications
-                            </>
-                          ) : (
-                            <>
-                              <BellOff className="mr-2 h-4 w-4" />
-                              Mute Notifications
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteAlertId(alert.id)}
-                          className="text-red-600 focus:text-red-600"
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-1 pb-0 text-sm">
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <div className="flex flex-col gap-1 text-sm">
                     <div className="flex justify-between items-center">
-                      <p className="font-bold text-lg">{formatPrice(alert.max_price)}</p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => toggleMute(alert.id)}
-                        title={alert.muted ? "Unmute notifications" : "Mute notifications"}
-                      >
-                        {alert.muted ? (
-                          <BellOff className="h-5 w-5 text-gray-400" />
+                      <div>
+                        {alert.min_price !== undefined && alert.min_price > 0 ? (
+                          <p className="font-medium">
+                            {formatPrice(alert.min_price)} - {formatPrice(alert.max_price)}
+                          </p>
                         ) : (
-                          <Bell className="h-5 w-5 text-green-600" />
+                          <p className="font-medium">
+                            {formatPrice(0)} - {formatPrice(alert.max_price)}
+                          </p>
+                        )}
+                      </div>
+                      <Bell className={`h-4 w-4 ${alert.muted ? "text-gray-300" : "text-green-600"}`} />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-600">
+                        {city}, {state} ({alert.radius || 1} mile radius)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs flex items-center gap-1 text-gray-500 hover:text-gray-700"
+                        onClick={() => setEditAlert(alert)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                        <span>Edit</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs flex items-center gap-1 text-primary hover:text-primary-foreground hover:bg-primary"
+                        onClick={() => handleViewListings(alert)}
+                      >
+                        <Search className="h-3 w-3" />
+                        <span>View</span>
+                        {alert.hasNewListings && alert.newListingsCount && alert.newListingsCount > 0 && (
+                          <span className="ml-1 bg-green-100 text-green-800 text-[10px] px-1 py-0.5 rounded-full">
+                            {alert.newListingsCount} new listings
+                          </span>
                         )}
                       </Button>
                     </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                        📍{alert.zip} ({alert.radius || 1}-{(alert.radius || 1) === 1 ? "mile" : "miles"} radius)
-                      </span>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-3 mt-auto">
-                    <Button
-                      size="sm"
-                      className="w-full flex items-center justify-center gap-1"
-                      onClick={() => handleViewListings(alert)}
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      <span>View Listings</span>
-                      {alert.hasNewListings && alert.newListingsCount && alert.newListingsCount > 0 && (
-                        <span className="ml-1 bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                          {alert.newListingsCount} new
-                        </span>
-                      )}
-                    </Button>
-                  </CardFooter>
-                </div>
-              </div>
-            </Card>
-          ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteAlertId} onOpenChange={handleDialogOpenChange}>
-        <AlertDialogContent className="z-50">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this search term. You won't receive any more notifications for it.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleDeleteAlert()
-              }}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete All Confirmation Dialog */}
-      <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
-        <AlertDialogContent className="z-50">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete all search terms?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete all your saved search terms. You won't receive any more notifications.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                deleteAllAlerts()
-              }}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={isDeletingAll}
-            >
-              {isDeletingAll ? "Deleting..." : "Delete All"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Edit Alert Dialog */}
       {editAlert && (

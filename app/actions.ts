@@ -16,6 +16,7 @@ export async function createWatchlistItem(formData: FormData) {
 
     const keyword = formData.get("keyword") as string
     const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
+    const minPrice = formData.get("minPrice") ? Number.parseInt(formData.get("minPrice") as string) : 0
     const zip = formData.get("zip") as string
     const radius = Number.parseInt(formData.get("radius") as string) || 1
     const marketplace = (formData.get("marketplace") as string) || "craigslist"
@@ -68,6 +69,7 @@ export async function createWatchlistItem(formData: FormData) {
       {
         keyword,
         max_price: maxPrice,
+        min_price: minPrice,
         zip,
         radius,
         marketplace,
@@ -171,6 +173,7 @@ export async function updateWatchlistItem(formData: FormData) {
     const id = formData.get("id") as string
     const keyword = formData.get("keyword") as string
     const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
+    const minPrice = formData.get("minPrice") ? Number.parseInt(formData.get("minPrice") as string) : 0
     const zip = formData.get("zip") as string
     const radius = Number.parseInt(formData.get("radius") as string) || 1
     const marketplace = (formData.get("marketplace") as string) || "craigslist"
@@ -206,6 +209,7 @@ export async function updateWatchlistItem(formData: FormData) {
       .update({
         keyword,
         max_price: maxPrice,
+        min_price: minPrice,
         zip,
         radius,
         marketplace,

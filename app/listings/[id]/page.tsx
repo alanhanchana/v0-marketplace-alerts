@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, ExternalLink, ArrowUpDown, SlidersHorizontal } from "lucide-react"
 import Image from "next/image"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Sheet,
@@ -23,9 +22,10 @@ import {
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
+import { Badge } from "@/components/ui/badge"
 
 // Mock listing data generator
-const generateMockListings = (keyword: string, maxPrice: number, count = 15) => {
+const generateMockListings = (keyword: string, maxPrice: number, marketplace: string, count = 15) => {
   const listings = []
   const basePrice = maxPrice * 0.7 // Most listings will be below max price
   const images = [
@@ -36,9 +36,7 @@ const generateMockListings = (keyword: string, maxPrice: number, count = 15) => 
     "/marketplace-item.png",
   ]
 
-  // Generate listings for each marketplace
-  const marketplaces = ["craigslist", "facebook", "offerup"]
-
+  // Generate listings for the specific marketplace only
   for (let i = 0; i < count; i++) {
     // Generate a price that's mostly below max price but occasionally above
     const priceMultiplier = Math.random() * 1.3 // 0 to 1.3
@@ -48,8 +46,8 @@ const generateMockListings = (keyword: string, maxPrice: number, count = 15) => 
     const date = new Date()
     date.setDate(date.getDate() - Math.floor(Math.random() * 7))
 
-    // Assign to a random marketplace
-    const source = marketplaces[Math.floor(Math.random() * marketplaces.length)]
+    // Calculate if this is a new listing (less than 4 hours old)
+    const isNew = Date.now() - date.getTime() < 4 * 60 * 60 * 1000
 
     listings.push({
       id: `listing-${i}`,
@@ -58,17 +56,19 @@ const generateMockListings = (keyword: string, maxPrice: number, count = 15) => 
       image: images[Math.floor(Math.random() * images.length)],
       location: ["Brooklyn", "Manhattan", "Queens", "Bronx", "Staten Island"][Math.floor(Math.random() * 5)],
       date: date.toLocaleDateString(),
-      source,
+      source: marketplace,
       distance: Math.floor(Math.random() * 20) + 1, // 1-20 miles
       condition: ["New", "Like New", "Good", "Fair", "Poor"][Math.floor(Math.random() * 5)],
+      isNew,
+      url: "#", // In a real app, this would be the actual listing URL
     })
   }
 
   return listings
 }
 
-type MarketplaceFilter = "all" | "craigslist" | "facebook" | "offerup"
 type SortOption = "newest" | "oldest" | "price-high" | "price-low" | "distance" | "relevance"
+type MarketplaceOption = "craigslist" | "facebook" | "offerup"
 
 interface FilterOptions {
   priceRange: [number, number]
@@ -85,7 +85,6 @@ export default function ListingsPage() {
   const [filteredListings, setFilteredListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [marketplaceFilter, setMarketplaceFilter] = useState<MarketplaceFilter>("all")
   const [sortOption, setSortOption] = useState<SortOption>("relevance")
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     priceRange: [0, 1000],
@@ -111,8 +110,8 @@ export default function ListingsPage() {
 
         setAlert(data)
 
-        // Generate mock listings based on the alert criteria
-        const mockListings = generateMockListings(data.keyword, data.max_price)
+        // Generate mock listings based on the alert criteria and specific marketplace
+        const mockListings = generateMockListings(data.keyword, data.max_price, data.marketplace, 20)
         setAllListings(mockListings)
 
         // Extract available filter options
@@ -147,11 +146,6 @@ export default function ListingsPage() {
     if (!allListings.length) return
 
     let result = [...allListings]
-
-    // Apply marketplace filter
-    if (marketplaceFilter !== "all") {
-      result = result.filter((listing) => listing.source === marketplaceFilter)
-    }
 
     // Apply price filter
     result = result.filter(
@@ -208,7 +202,7 @@ export default function ListingsPage() {
     }
 
     setFilteredListings(result)
-  }, [allListings, marketplaceFilter, sortOption, filterOptions, alert])
+  }, [allListings, sortOption, filterOptions, alert])
 
   // Format price with dollar sign and commas
   const formatPrice = (price: number) => {
@@ -245,6 +239,61 @@ export default function ListingsPage() {
         return "OU"
       default:
         return marketplace.substring(0, 2).toUpperCase()
+    }
+  }
+
+  // Get marketplace icon
+  const getMarketplaceIcon = (marketplaceOption: string) => {
+    switch (marketplaceOption) {
+      case "craigslist":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 7V4h16v3" />
+            <path d="M9 20h6" />
+            <path d="M12 4v16" />
+          </svg>
+        )
+      case "facebook":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+          </svg>
+        )
+      case "offerup":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z" />
+          </svg>
+        )
+      default:
+        return null
     }
   }
 
@@ -298,7 +347,12 @@ export default function ListingsPage() {
     })
 
     setSortOption("relevance")
-    setMarketplaceFilter("all")
+  }
+
+  // Handle listing click
+  const handleListingClick = (url: string) => {
+    // In a real app, this would open the listing in a new tab
+    window.open(url, "_blank")
   }
 
   if (loading) {
@@ -355,40 +409,29 @@ export default function ListingsPage() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
-        <h1 className="text-xl font-bold truncate">{alert.keyword}</h1>
-      </div>
-
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex flex-wrap gap-2 text-sm">
-          <span className="bg-gray-100 px-2 py-1 rounded">{formatPrice(alert.max_price)}</span>
-          <span className="bg-gray-100 px-2 py-1 rounded">
-            📍{alert.zip} ({alert.radius || 1}-{(alert.radius || 1) === 1 ? "mile" : "miles"} radius)
-          </span>
+        <div className="flex items-center">
+          {getMarketplaceIcon(alert.marketplace)}
+          <h1 className="text-xl font-bold truncate">{alert.keyword}</h1>
         </div>
       </div>
 
-      {/* Marketplace filter tabs */}
-      <Tabs
-        defaultValue="all"
-        className="mb-4"
-        value={marketplaceFilter}
-        onValueChange={(value) => setMarketplaceFilter(value as MarketplaceFilter)}
-      >
-        <TabsList className="w-full grid grid-cols-4 h-9">
-          <TabsTrigger value="all" className="text-xs">
-            All Markets
-          </TabsTrigger>
-          <TabsTrigger value="craigslist" className="text-xs">
-            Craigslist
-          </TabsTrigger>
-          <TabsTrigger value="facebook" className="text-xs">
-            FB Marketplace
-          </TabsTrigger>
-          <TabsTrigger value="offerup" className="text-xs">
-            OfferUp
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap gap-2 text-sm">
+          {alert.min_price ? (
+            <span className="bg-gray-100 px-2 py-1 rounded">
+              {formatPrice(alert.min_price)} - {formatPrice(alert.max_price)}
+            </span>
+          ) : (
+            <span className="bg-gray-100 px-2 py-1 rounded">Max price: {formatPrice(alert.max_price)}</span>
+          )}
+          <span className="bg-gray-100 px-2 py-1 rounded">
+            {alert.zip} ({alert.radius || 1} mile radius)
+          </span>
+        </div>
+        <div className={`px-2 py-1 rounded text-white text-xs ${getMarketplaceBadgeColor(alert.marketplace)}`}>
+          {alert.marketplace}
+        </div>
+      </div>
 
       {/* Sort and filter controls */}
       <div className="flex justify-between items-center mb-4">
@@ -531,7 +574,7 @@ export default function ListingsPage() {
           {filteredListings.map((listing) => (
             <Card key={listing.id} className="overflow-hidden border-none shadow-md">
               <div className="flex">
-                <div className="w-1/3 relative">
+                <div className="w-1/3 relative cursor-pointer" onClick={() => handleListingClick(listing.url)}>
                   <Image
                     src={listing.image || "/placeholder.svg"}
                     alt={listing.title}
@@ -540,10 +583,14 @@ export default function ListingsPage() {
                     className="h-full object-cover"
                   />
                   <div
-                    className={`absolute top-1 left-1 ${getMarketplaceBadgeColor(listing.source)} text-white text-xs px-1.5 py-0.5 rounded`}
+                    className={`absolute top-1 left-1 ${getMarketplaceBadgeColor(listing.source)} text-white text-xs px-1.5 py-0.5 rounded flex items-center`}
                   >
+                    {getMarketplaceIcon(listing.source)}
                     {getMarketplaceDisplay(listing.source)}
                   </div>
+                  {listing.isNew && (
+                    <Badge className="absolute top-1 right-1 bg-green-500 text-white text-xs">New Listing</Badge>
+                  )}
                 </div>
                 <div className="w-2/3 flex flex-col">
                   <CardHeader className="p-3 pb-0">
@@ -559,7 +606,12 @@ export default function ListingsPage() {
                     </div>
                   </CardContent>
                   <CardFooter className="p-3 mt-auto">
-                    <Button size="sm" className="w-full flex items-center justify-center gap-1" variant="outline">
+                    <Button
+                      size="sm"
+                      className="w-full flex items-center justify-center gap-1"
+                      variant="outline"
+                      onClick={() => handleListingClick(listing.url)}
+                    >
                       <ExternalLink className="h-3.5 w-3.5" />
                       <span>View Listing</span>
                     </Button>
