@@ -42,6 +42,7 @@ export default function Home() {
   const [minPriceValue, setMinPriceValue] = useState(0)
   const [maxPriceValue, setMaxPriceValue] = useState(0)
   const [priceError, setPriceError] = useState<string | null>(null)
+  const [submitClicked, setSubmitClicked] = useState(false)
 
   // Set marketplace from URL parameter if available
   useEffect(() => {
@@ -165,7 +166,7 @@ export default function Home() {
     if (!form) return
 
     const handleSubmitCapture = (e: Event) => {
-      if (isSubmitting) {
+      if (isSubmitting || submitClicked) {
         e.preventDefault()
         e.stopPropagation()
       }
@@ -175,7 +176,7 @@ export default function Home() {
     return () => {
       form.removeEventListener("submit", handleSubmitCapture, true)
     }
-  }, [isSubmitting])
+  }, [isSubmitting, submitClicked])
 
   // Handle radius changes from either input
   const handleRadiusChange = (value: number) => {
@@ -184,22 +185,46 @@ export default function Home() {
     setRadius(validatedValue)
   }
 
+  // Handle radius input change with max validation
+  const handleRadiusInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+
+    // If the input is empty, allow it (will be treated as 0)
+    if (value === "") {
+      setRadius(0)
+      return
+    }
+
+    // Parse the value as a number
+    const numValue = Number.parseInt(value, 10)
+
+    // Check if it's a valid number and within range
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+      setRadius(numValue)
+    }
+  }
+
   async function handleSubmit(formData: FormData) {
     // Prevent multiple submissions
-    if (isSubmitting) {
+    if (isSubmitting || submitClicked) {
       console.log("Submission already in progress, ignoring")
       return
     }
 
+    // Set submit clicked to true to prevent multiple clicks
+    setSubmitClicked(true)
+
     // Check if we've reached the limit for this marketplace
     if (searchTermCounts[marketplace] >= 5) {
       setError(`You can only have 5 saved search terms for ${marketplace}. Please delete one to add more.`)
+      setSubmitClicked(false)
       return
     }
 
     // Validate min/max price relationship
     if (priceError) {
       setError(priceError)
+      setSubmitClicked(false)
       return
     }
 
@@ -237,10 +262,12 @@ export default function Home() {
       } else {
         setError(result.error || "Something went wrong")
         setIsSubmitting(false)
+        setSubmitClicked(false)
       }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred")
       setIsSubmitting(false)
+      setSubmitClicked(false)
     }
   }
 
@@ -314,27 +341,27 @@ export default function Home() {
   return (
     <div className="py-4 max-w-md mx-auto">
       <Card className="border shadow-md rounded-xl overflow-hidden">
-        <CardHeader className="text-center py-3 px-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="text-center py-2 px-4 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="text-xl md:text-2xl font-bold">Find Undervalued Deals</CardTitle>
           <CardDescription className="text-sm mt-1">Get notified when great deals match your criteria</CardDescription>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-3">
           {error && (
-            <Alert variant="destructive" className="mb-4 text-sm">
+            <Alert variant="destructive" className="mb-3 text-sm">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {priceError && (
-            <Alert className="mb-4 text-sm bg-amber-50 text-amber-800 border-amber-200">
+            <Alert className="mb-3 text-sm bg-amber-50 text-amber-800 border-amber-200">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{priceError}</AlertDescription>
             </Alert>
           )}
 
           {searchTermCounts[marketplace] >= 5 && (
-            <Alert className="mb-4 text-sm bg-amber-50 text-amber-800 border-amber-200">
+            <Alert className="mb-3 text-sm bg-amber-50 text-amber-800 border-amber-200">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 You have reached the maximum of 5 saved search terms for {marketplace}. Please delete one to add more.
@@ -342,7 +369,7 @@ export default function Home() {
             </Alert>
           )}
 
-          <form ref={formRef} action={handleSubmit} className="space-y-4" noValidate>
+          <form ref={formRef} action={handleSubmit} className="space-y-3" noValidate>
             {/* Marketplace Toggle */}
             <div className="flex justify-center mb-1">
               <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg flex-wrap justify-center">
@@ -388,30 +415,53 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="keyword" className="text-sm font-medium">
-                What are you looking for?
-              </Label>
-              <Input
-                id="keyword"
-                name="keyword"
-                placeholder="e.g. iPhone, PlayStation, Furniture"
-                className="h-11 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                required
-                disabled={isSubmitting || searchTermCounts[marketplace] >= 5}
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-              />
+            {/* Keyword and ZIP side by side */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="col-span-3 space-y-1">
+                <Label htmlFor="keyword" className="text-sm font-medium">
+                  What are you looking for?
+                </Label>
+                <Input
+                  id="keyword"
+                  name="keyword"
+                  placeholder="e.g. iPhone, PlayStation, Furniture"
+                  className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                  required
+                  disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                />
+              </div>
+              <div className="col-span-1 space-y-1">
+                <Label htmlFor="zip" className="text-sm font-medium">
+                  ZIP Code
+                </Label>
+                <Input
+                  id="zip"
+                  name="zip"
+                  placeholder="ZIP"
+                  className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                  required
+                  pattern="[0-9]{5}"
+                  maxLength={5}
+                  minLength={5}
+                  inputMode="numeric"
+                  disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                  title="Please enter a valid 5-digit ZIP code"
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                />
+              </div>
             </div>
 
-            {/* Price inputs and ZIP side by side */}
+            {/* Price inputs side by side */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="minPrice" className="text-sm font-medium">
                   Minimum Price
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">$</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
                   <Input
                     id="minPrice"
                     name="minPrice"
@@ -420,17 +470,17 @@ export default function Home() {
                     placeholder="0"
                     value={minPrice}
                     onChange={handleMinPriceChange}
-                    className="h-11 text-base pl-8 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5}
+                    className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Label htmlFor="maxPrice" className="text-sm font-medium">
                   Maximum Price
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">$</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
                   <Input
                     id="maxPrice"
                     name="maxPrice"
@@ -439,43 +489,19 @@ export default function Home() {
                     placeholder="500"
                     value={maxPrice}
                     onChange={handleMaxPriceChange}
-                    className="h-11 text-base pl-8 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                    className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
                     required
-                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5}
+                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="zip" className="text-sm font-medium">
-                ZIP Code
-              </Label>
-              <Input
-                id="zip"
-                name="zip"
-                placeholder="Enter ZIP"
-                className="h-11 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                required
-                pattern="[0-9]{5}"
-                maxLength={5}
-                minLength={5}
-                inputMode="numeric"
-                disabled={isSubmitting || searchTermCounts[marketplace] >= 5}
-                title="Please enter a valid 5-digit ZIP code"
-                value={zipCode}
-                onChange={(e) => setZipCode(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
+            <div className="space-y-1">
+              <div>
                 <Label htmlFor="radius" className="text-sm font-medium">
                   Search Radius
                 </Label>
-                <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                  {radius} {radius === 1 ? "mile" : "miles"}
-                </span>
               </div>
 
               <div className="flex items-center gap-3">
@@ -493,7 +519,7 @@ export default function Home() {
                       style={{
                         background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${radius}%, #e5e7eb ${radius}%, #e5e7eb 100%)`,
                       }}
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5}
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
                     />
                     <div className="flex justify-between text-xs text-gray-500 px-1 mt-1">
                       <span>0</span>
@@ -507,15 +533,13 @@ export default function Home() {
 
                 <div className="w-16 flex-shrink-0">
                   <Input
-                    type="number"
+                    type="text"
                     id="radius"
                     name="radius"
-                    min="0"
-                    max="100"
                     value={radius}
-                    onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value || "0"))}
-                    className="h-9 text-center text-sm"
-                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5}
+                    onChange={handleRadiusInputChange}
+                    className="h-8 text-center text-sm"
+                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
                     aria-label="Radius in miles"
                   />
                 </div>
@@ -527,10 +551,12 @@ export default function Home() {
             <Button
               ref={submitButtonRef}
               type="submit"
-              className="w-full h-12 text-base font-medium mt-4 transition-all touch-manipulation"
-              disabled={isSubmitting || !isFormValid || searchTermCounts[marketplace] >= 5 || isLoading}
+              className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation"
+              disabled={
+                isSubmitting || !isFormValid || searchTermCounts[marketplace] >= 5 || isLoading || submitClicked
+              }
             >
-              {isSubmitting ? (
+              {isSubmitting || submitClicked ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg
                     className="animate-spin h-5 w-5 text-white"

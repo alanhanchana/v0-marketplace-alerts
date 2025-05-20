@@ -24,7 +24,7 @@ export default function Footer() {
             className={`flex flex-col items-center p-2 ${pathname === "/alerts" ? "text-primary" : "text-gray-500"}`}
           >
             <Bell className="h-6 w-6" />
-            <span className="text-xs mt-1">Alerts</span>
+            <span className="text-xs mt-1">Watchlist</span>
           </Link>
         </div>
       </div>

@@ -6,9 +6,18 @@ import { EditAlertDialog } from "@/components/edit-alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabaseClient"
 import { deleteWatchlistItem } from "@/app/actions"
-import { Pencil, Trash2, Search, Bell, Plus, ArrowUpDown } from "lucide-react"
-import type { RealtimeChannel } from "@supabase/supabase-js"
+import { Pencil, Trash2, Search, Bell, Plus, BellOff } from "lucide-react"
 import { useRouter } from "next/navigation"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // Function to get city and state from ZIP code
 function getCityStateFromZip(zip: string): { city: string; state: string } {
@@ -52,6 +61,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleteAlertId, setDeleteAlertId] = useState<string | null>(null)
+  const [deleteAlertKeyword, setDeleteAlertKeyword] = useState<string>("")
   const [editAlert, setEditAlert] = useState<Alert | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [marketplaceFilter, setMarketplaceFilter] = useState<MarketplaceFilter>("craigslist")
@@ -63,6 +73,9 @@ export default function AlertsPage() {
     facebook: 0,
     offerup: 0,
   })
+  // Add polling interval reference
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Handle alert update from edit dialog
   const handleAlertUpdated = useCallback((updatedAlert: Alert) => {
@@ -88,6 +101,13 @@ export default function AlertsPage() {
     router.push(`/?marketplace=${marketplaceFilter}`)
   }
 
+  // Toggle notification mute status
+  const toggleNotificationMute = (alertId: string) => {
+    setAlerts((currentAlerts) =>
+      currentAlerts.map((alert) => (alert.id === alertId ? { ...alert, muted: !alert.muted } : alert)),
+    )
+  }
+
   // Apply filters and sorting
   useEffect(() => {
     let result = [...alerts]
@@ -101,27 +121,11 @@ export default function AlertsPage() {
       return alert.marketplace === marketplaceFilter
     })
 
-    // Apply sorting
-    switch (sortOption) {
-      case "price-low":
-        result.sort((a, b) => a.max_price - b.max_price)
-        break
-      case "price-high":
-        result.sort((a, b) => b.max_price - a.max_price)
-        break
-      case "newest":
-        result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
-        break
-      case "oldest":
-        result.sort((a, b) => new Date(a.created_at || "").getTime() - new Date(b.created_at || "").getTime())
-        break
-      default:
-        // Default to newest first
-        result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
-    }
+    // Apply sorting - default to newest first
+    result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
 
     setFilteredAlerts(result)
-  }, [alerts, marketplaceFilter, sortOption])
+  }, [alerts, marketplaceFilter])
 
   // Count alerts by marketplace
   useEffect(() => {
@@ -141,171 +145,77 @@ export default function AlertsPage() {
     setSearchTermCounts(counts)
   }, [alerts])
 
-  // Fetch alerts and set up real-time subscription
+  // Function to fetch alerts data
+  const fetchAlertsData = useCallback(async () => {
+    try {
+      console.log("Fetching alerts data...")
+
+      // Fetch data from Supabase
+      const { data, error } = await supabase.from("watchlist").select("*").order("created_at", { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      console.log("Data fetched:", data)
+
+      // Add random hasNewListings for demo
+      const alertsWithNewListings = data.map((alert) => ({
+        ...alert,
+        muted: false, // Default to notifications enabled
+        hasNewListings: Math.random() > 0.5, // Randomly show new listings indicator for demo
+        newListingsCount: Math.floor(Math.random() * 10) + 1, // Random number of new listings (1-10)
+      }))
+
+      setAlerts(alertsWithNewListings)
+      setLoading(false)
+    } catch (err: any) {
+      console.error("Error fetching alerts:", err)
+      setError(err.message || "Failed to load search terms")
+      setLoading(false)
+    }
+  }, [])
+
+  // Initial data fetch and set up polling
   useEffect(() => {
-    let realtimeChannel: RealtimeChannel
+    // Initial fetch
+    fetchAlertsData()
 
-    async function fetchAlerts() {
-      try {
-        setLoading(true)
-        console.log("Fetching initial alerts data...")
+    // Set up polling every 10 seconds
+    pollingIntervalRef.current = setInterval(fetchAlertsData, 10000)
 
-        // Fetch initial data
-        const { data, error } = await supabase.from("watchlist").select("*").order("created_at", { ascending: false })
-
-        if (error) {
-          throw error
-        }
-
-        console.log("Initial data fetched:", data)
-
-        // Add random hasNewListings for demo
-        const alertsWithNewListings = data.map((alert) => ({
-          ...alert,
-          muted: false, // Default to notifications enabled
-          hasNewListings: Math.random() > 0.5, // Randomly show new listings indicator for demo
-          newListingsCount: Math.floor(Math.random() * 10) + 1, // Random number of new listings (1-10)
-        }))
-
-        setAlerts(alertsWithNewListings)
-
-        // Set up real-time subscription
-        console.log("Setting up real-time subscription...")
-        realtimeChannel = supabase
-          .channel("watchlist-changes")
-          .on(
-            "postgres_changes",
-            {
-              event: "*", // Listen to all changes (INSERT, UPDATE, DELETE)
-              schema: "public",
-              table: "watchlist",
-            },
-            (payload) => {
-              console.log("Real-time change received:", payload)
-
-              // Handle different types of changes
-              if (payload.eventType === "INSERT") {
-                const newAlert = payload.new as Alert
-                newAlert.hasNewListings = true // New alerts have new listings
-                newAlert.newListingsCount = Math.floor(Math.random() * 5) + 1 // Random number of new listings (1-5)
-                newAlert.muted = false // Default to notifications enabled
-
-                setAlerts((currentAlerts) => {
-                  // Check if the alert already exists to prevent duplicates
-                  const exists = currentAlerts.some((alert) => alert.id === newAlert.id)
-                  if (exists) return currentAlerts
-
-                  // Count alerts for this marketplace
-                  const marketplaceCount = currentAlerts.filter(
-                    (alert) => alert.marketplace === newAlert.marketplace,
-                  ).length
-
-                  // Check if we've reached the limit of 5 alerts for this marketplace
-                  if (marketplaceCount >= 5) {
-                    toast({
-                      title: "Maximum limit reached",
-                      description: `You can only have 5 saved search terms for ${newAlert.marketplace}. Please delete one to add more.`,
-                      variant: "destructive",
-                      duration: 5000,
-                    })
-                    return currentAlerts
-                  }
-
-                  return [newAlert, ...currentAlerts]
-                })
-
-                toast({
-                  title: "New Search Term Added",
-                  description: `Search term for "${newAlert.keyword}" has been added`,
-                  duration: 3000,
-                })
-              } else if (payload.eventType === "UPDATE") {
-                const updatedAlert = payload.new as Alert
-
-                console.log("Updating alert:", updatedAlert)
-
-                setAlerts((currentAlerts) => {
-                  return currentAlerts.map((alert) => {
-                    if (alert.id === updatedAlert.id) {
-                      console.log("Found alert to update:", alert.id)
-                      return {
-                        ...updatedAlert,
-                        muted: alert.muted, // Preserve mute state
-                        hasNewListings: alert.hasNewListings, // Preserve new listings state
-                        newListingsCount: alert.newListingsCount, // Preserve new listings count
-                      }
-                    }
-                    return alert
-                  })
-                })
-
-                // Only show toast if this wasn't triggered by the current user's edit
-                if (!editAlert || editAlert.id !== updatedAlert.id) {
-                  toast({
-                    title: "Search Term Updated",
-                    description: `Search term for "${updatedAlert.keyword}" has been updated`,
-                    duration: 3000,
-                  })
-                }
-              } else if (payload.eventType === "DELETE") {
-                const deletedAlertId = payload.old.id
-                console.log("Deleting alert:", deletedAlertId)
-
-                setAlerts((currentAlerts) => {
-                  return currentAlerts.filter((alert) => {
-                    const shouldKeep = alert.id !== deletedAlertId
-                    if (!shouldKeep) console.log("Removing alert:", alert.id)
-                    return shouldKeep
-                  })
-                })
-
-                // Only show toast if this wasn't triggered by the current user's delete
-                if (deleteAlertId !== deletedAlertId && !deleteInProgressRef.current) {
-                  toast({
-                    title: "Search Term Deleted",
-                    description: "A search term has been deleted",
-                    duration: 3000,
-                  })
-                }
-              }
-            },
-          )
-          .subscribe()
-      } catch (err: any) {
-        console.error("Error fetching alerts:", err)
-        setError(err.message || "Failed to load search terms")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAlerts()
-
-    // Clean up subscription when component unmounts
+    // Clean up on unmount
     return () => {
-      console.log("Cleaning up real-time subscription...")
-      if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel)
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
       }
     }
-  }, [toast]) // Include toast in dependencies to avoid lint warnings
+  }, [fetchAlertsData])
 
   // Track when the alert dialog opens/closes
   useEffect(() => {
     alertDialogOpenRef.current = !!deleteAlertId
   }, [deleteAlertId])
 
+  // Open delete confirmation dialog
+  const confirmDelete = (id: string, keyword: string) => {
+    setDeleteAlertId(id)
+    setDeleteAlertKeyword(keyword)
+    setShowDeleteConfirm(true)
+  }
+
   // Handle delete alert
-  const handleDeleteAlert = async (id: string) => {
-    if (isDeleting) return
+  const handleDeleteAlert = async () => {
+    if (isDeleting || !deleteAlertId) return
 
     setIsDeleting(true)
     deleteInProgressRef.current = true
+    setShowDeleteConfirm(false)
 
     try {
       // Find the alert to delete
-      const alertToDelete = alerts.find((alert) => alert.id === id)
-      const idToDelete = id
+      const alertToDelete = alerts.find((alert) => alert.id === deleteAlertId)
+      const idToDelete = deleteAlertId
 
       // Remove from UI immediately
       setAlerts((currentAlerts) => currentAlerts.filter((alert) => alert.id !== idToDelete))
@@ -342,6 +252,7 @@ export default function AlertsPage() {
       })
     } finally {
       setIsDeleting(false)
+      setDeleteAlertId(null)
       // Use a small timeout to prevent race conditions with realtime events
       setTimeout(() => {
         deleteInProgressRef.current = false
@@ -432,19 +343,19 @@ export default function AlertsPage() {
     }
   }
 
-  // Get sort option label
-  const getSortOptionLabel = (option: SortOption): string => {
-    switch (option) {
-      case "price-low":
-        return "Price: Low to High"
-      case "price-high":
-        return "Price: High to Low"
-      case "newest":
-        return "Newest First"
-      case "oldest":
-        return "Oldest First"
-      default:
-        return "Sort by"
+  // Render notification bell with mute status
+  const renderNotificationBell = (muted: boolean) => {
+    if (muted) {
+      return (
+        <div className="relative">
+          <BellOff className="h-4 w-4 text-red-500" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-5 h-0.5 bg-red-500 transform rotate-45 translate-y-0"></div>
+          </div>
+        </div>
+      )
+    } else {
+      return <Bell className="h-4 w-4 text-green-600" />
     }
   }
 
@@ -501,20 +412,8 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* Sort and Add New buttons */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-8 flex items-center gap-1"
-            onClick={() => setSortOption(sortOption === "price-low" ? "price-high" : "price-low")}
-          >
-            <ArrowUpDown className="h-3 w-3 mr-1" />
-            {getSortOptionLabel(sortOption)}
-          </Button>
-        </div>
-
+      {/* Add New button */}
+      <div className="flex justify-end mb-4">
         {searchTermCounts[marketplaceFilter] < 5 && (
           <Button
             variant="outline"
@@ -556,29 +455,26 @@ export default function AlertsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                      onClick={() => handleDeleteAlert(alert.id)}
+                      className="h-7 w-7 text-gray-400 hover:text-green-500 hover:bg-green-50"
+                      onClick={() => toggleNotificationMute(alert.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
+                      {renderNotificationBell(!!alert.muted)}
+                      <span className="sr-only">{alert.muted ? "Enable notifications" : "Mute notifications"}</span>
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
                   <div className="flex flex-col gap-1 text-sm">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        {alert.min_price !== undefined && alert.min_price > 0 ? (
-                          <p className="font-medium">
-                            {formatPrice(alert.min_price)} - {formatPrice(alert.max_price)}
-                          </p>
-                        ) : (
-                          <p className="font-medium">
-                            {formatPrice(0)} - {formatPrice(alert.max_price)}
-                          </p>
-                        )}
-                      </div>
-                      <Bell className={`h-4 w-4 ${alert.muted ? "text-gray-300" : "text-green-600"}`} />
+                    <div>
+                      {alert.min_price !== undefined && alert.min_price > 0 ? (
+                        <p className="font-medium">
+                          Range: {formatPrice(alert.min_price)} - {formatPrice(alert.max_price)}
+                        </p>
+                      ) : (
+                        <p className="font-medium">
+                          Range: {formatPrice(0)} - {formatPrice(alert.max_price)}
+                        </p>
+                      )}
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-600">
@@ -586,15 +482,26 @@ export default function AlertsPage() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center mt-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs flex items-center gap-1 text-gray-500 hover:text-gray-700"
-                        onClick={() => setEditAlert(alert)}
-                      >
-                        <Pencil className="h-3 w-3" />
-                        <span>Edit</span>
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs flex items-center gap-1 text-gray-500 hover:text-gray-700"
+                          onClick={() => setEditAlert(alert)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                          <span>Edit</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs flex items-center gap-1 text-gray-500 hover:text-red-500 hover:bg-red-50"
+                          onClick={() => confirmDelete(alert.id, alert.keyword)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Delete</span>
+                        </Button>
+                      </div>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -629,6 +536,24 @@ export default function AlertsPage() {
           onAlertUpdated={handleAlertUpdated}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Search Term</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteAlertKeyword}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAlert} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

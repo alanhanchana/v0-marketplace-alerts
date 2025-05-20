@@ -36,6 +36,21 @@ const generateMockListings = (keyword: string, maxPrice: number, marketplace: st
     "/marketplace-item.png",
   ]
 
+  // Generate marketplace-specific URLs
+  const getMarketplaceUrl = (marketplace: string, keyword: string) => {
+    const encodedKeyword = encodeURIComponent(keyword)
+    switch (marketplace) {
+      case "craigslist":
+        return `https://craigslist.org/search/sss?query=${encodedKeyword}`
+      case "facebook":
+        return `https://www.facebook.com/marketplace/search/?query=${encodedKeyword}`
+      case "offerup":
+        return `https://offerup.com/search?q=${encodedKeyword}`
+      default:
+        return "#"
+    }
+  }
+
   // Generate listings for the specific marketplace only
   for (let i = 0; i < count; i++) {
     // Generate a price that's mostly below max price but occasionally above
@@ -60,14 +75,15 @@ const generateMockListings = (keyword: string, maxPrice: number, marketplace: st
       distance: Math.floor(Math.random() * 20) + 1, // 1-20 miles
       condition: ["New", "Like New", "Good", "Fair", "Poor"][Math.floor(Math.random() * 5)],
       isNew,
-      url: "#", // In a real app, this would be the actual listing URL
+      url: getMarketplaceUrl(marketplace, keyword), // Use the marketplace-specific URL
     })
   }
 
   return listings
 }
 
-type SortOption = "newest" | "oldest" | "price-high" | "price-low" | "distance" | "relevance"
+type SortOption = "newest" | "oldest" | "price-high" | "price-low" | "distance"
+
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
 
 interface FilterOptions {
@@ -582,12 +598,6 @@ export default function ListingsPage() {
                     height={200}
                     className="h-full object-cover"
                   />
-                  <div
-                    className={`absolute top-1 left-1 ${getMarketplaceBadgeColor(listing.source)} text-white text-xs px-1.5 py-0.5 rounded flex items-center`}
-                  >
-                    {getMarketplaceIcon(listing.source)}
-                    {getMarketplaceDisplay(listing.source)}
-                  </div>
                   {listing.isNew && (
                     <Badge className="absolute top-1 right-1 bg-green-500 text-white text-xs">New Listing</Badge>
                   )}
@@ -613,7 +623,7 @@ export default function ListingsPage() {
                       onClick={() => handleListingClick(listing.url)}
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
-                      <span>View Listing</span>
+                      <span>View on {listing.source.charAt(0).toUpperCase() + listing.source.slice(1)}</span>
                     </Button>
                   </CardFooter>
                 </div>

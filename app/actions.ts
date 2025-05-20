@@ -46,8 +46,33 @@ export async function createWatchlistItem(formData: FormData) {
 
     console.log("Creating watchlist item:", { keyword, maxPrice, zip, radius, marketplace })
 
+    // Check if a search term with the same keyword and marketplace already exists
+    const { data: existingItems, error: checkError } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("keyword", keyword)
+      .eq("marketplace", marketplace)
+
+    if (checkError) {
+      console.error("Error checking for duplicate search terms:", checkError)
+      return {
+        success: false,
+        error: "Failed to check for duplicate search terms",
+      }
+    }
+
+    if (existingItems && existingItems.length > 0) {
+      return {
+        success: false,
+        error: `A search term for "${keyword}" already exists in ${marketplace}. Please edit the existing term instead.`,
+      }
+    }
+
     // Check if we've reached the limit of 5 search terms
-    const { count, error: countError } = await supabase.from("watchlist").select("*", { count: "exact", head: true })
+    const { count, error: countError } = await supabase
+      .from("watchlist")
+      .select("*", { count: "exact", head: true })
+      .eq("marketplace", marketplace)
 
     if (countError) {
       console.error("Error checking search term count:", countError)
@@ -200,6 +225,29 @@ export async function updateWatchlistItem(formData: FormData) {
       return {
         success: false,
         error: "Maximum price must be greater than zero",
+      }
+    }
+
+    // Check if a search term with the same keyword and marketplace already exists (excluding this one)
+    const { data: existingItems, error: checkError } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("keyword", keyword)
+      .eq("marketplace", marketplace)
+      .neq("id", id)
+
+    if (checkError) {
+      console.error("Error checking for duplicate search terms:", checkError)
+      return {
+        success: false,
+        error: "Failed to check for duplicate search terms",
+      }
+    }
+
+    if (existingItems && existingItems.length > 0) {
+      return {
+        success: false,
+        error: `A search term for "${keyword}" already exists in ${marketplace}. Please use a different keyword.`,
       }
     }
 
