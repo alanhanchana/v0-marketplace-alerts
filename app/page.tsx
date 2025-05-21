@@ -31,17 +31,10 @@ type CategoryOption =
   | "jewelry"
   | "books"
 
-// First, update the CategoryOption type to include vehicle-specific properties
-// Add this after the CategoryOption type definition:
+// First, add vehicle-specific types and state variables after the CategoryOption type
 
-// Vehicle-specific form fields interface
-interface VehicleFields {
-  year?: string
-  make?: string
-  model?: string
-  minMileage?: string
-  maxMileage?: string
-}
+// Add these types after the CategoryOption type definition
+type VehicleType = "all" | "car" | "truck" | "suv" | "motorcycle" | "rv" | "boat" | "other"
 
 export default function Home() {
   const router = useRouter()
@@ -55,15 +48,13 @@ export default function Home() {
   // Add a new state for the selected category after the marketplace state
   const [category, setCategory] = useState<CategoryOption>("all")
 
-  // Then add these new state variables after the existing state declarations:
-  const [showVehicleFields, setShowVehicleFields] = useState(false)
-  const [vehicleFields, setVehicleFields] = useState<VehicleFields>({
-    year: "",
-    make: "",
-    model: "",
-    minMileage: "",
-    maxMileage: "",
-  })
+  // Add these state variables after the existing state variables
+  const [vehicleType, setVehicleType] = useState<VehicleType>("all")
+  const [minYear, setMinYear] = useState("")
+  const [maxYear, setMaxYear] = useState("")
+  const [make, setMake] = useState("")
+  const [model, setModel] = useState("")
+  const [maxMileage, setMaxMileage] = useState("")
 
   const [maxPrice, setMaxPrice] = useState("")
   const [keyword, setKeyword] = useState("")
@@ -137,12 +128,6 @@ export default function Home() {
     fetchSearchTermCounts()
   }, [])
 
-  // Add this effect to show/hide vehicle fields when category changes
-  // Add this after the other useEffect hooks:
-  useEffect(() => {
-    setShowVehicleFields(category === "vehicles")
-  }, [category])
-
   // Format number with commas
   const formatNumberWithCommas = (value: string) => {
     // Remove any non-digit characters
@@ -188,16 +173,6 @@ export default function Home() {
     } else {
       setPriceError(null)
     }
-  }
-
-  // Add this handler function for vehicle field changes
-  // Add this after the other handler functions:
-  const handleVehicleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setVehicleFields((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
   }
 
   // Update slider background on mount and when radius changes
@@ -296,14 +271,14 @@ export default function Home() {
       // Add this after the marketplace is appended to formData
       formData.append("category", category)
 
-      // Update the handleSubmit function to include vehicle fields when submitting
-      // Inside the handleSubmit function, after appending the category, add:
+      // Add vehicle-specific properties if category is vehicles
       if (category === "vehicles") {
-        Object.entries(vehicleFields).forEach(([key, value]) => {
-          if (value) {
-            formData.append(key, value)
-          }
-        })
+        formData.append("vehicleType", vehicleType)
+        if (minYear) formData.append("minYear", minYear)
+        if (maxYear) formData.append("maxYear", maxYear)
+        if (make) formData.append("make", make)
+        if (model) formData.append("model", model)
+        if (maxMileage) formData.append("maxMileage", maxMileage)
       }
 
       // Replace the formatted max price with the raw number
@@ -511,6 +486,123 @@ export default function Home() {
                 <option value="books">Books & Media</option>
               </select>
             </div>
+            {/* Add this code after the category selector div and before the keyword/zip grid: */}
+            {category === "vehicles" && (
+              <div className="space-y-3 border-l-2 border-blue-200 pl-3 mt-2 mb-2">
+                <div className="space-y-1">
+                  <Label htmlFor="vehicleType" className="text-sm font-medium">
+                    Vehicle Type
+                  </Label>
+                  <select
+                    id="vehicleType"
+                    name="vehicleType"
+                    value={vehicleType}
+                    onChange={(e) => setVehicleType(e.target.value as VehicleType)}
+                    className="w-full h-9 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                  >
+                    <option value="all">All Types</option>
+                    <option value="car">Car</option>
+                    <option value="truck">Truck</option>
+                    <option value="suv">SUV</option>
+                    <option value="motorcycle">Motorcycle</option>
+                    <option value="rv">RV/Camper</option>
+                    <option value="boat">Boat</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="minYear" className="text-sm font-medium">
+                      Min Year
+                    </Label>
+                    <Input
+                      id="minYear"
+                      name="minYear"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="2010"
+                      value={minYear}
+                      onChange={(e) => setMinYear(e.target.value)}
+                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="maxYear" className="text-sm font-medium">
+                      Max Year
+                    </Label>
+                    <Input
+                      id="maxYear"
+                      name="maxYear"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="2023"
+                      value={maxYear}
+                      onChange={(e) => setMaxYear(e.target.value)}
+                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="make" className="text-sm font-medium">
+                      Make
+                    </Label>
+                    <Input
+                      id="make"
+                      name="make"
+                      type="text"
+                      placeholder="Toyota, Honda..."
+                      value={make}
+                      onChange={(e) => setMake(e.target.value)}
+                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="model" className="text-sm font-medium">
+                      Model
+                    </Label>
+                    <Input
+                      id="model"
+                      name="model"
+                      type="text"
+                      placeholder="Camry, Civic..."
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="maxMileage" className="text-sm font-medium">
+                    Max Mileage
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="maxMileage"
+                      name="maxMileage"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="100,000"
+                      value={maxMileage}
+                      onChange={(e) =>
+                        setMaxMileage(e.target.value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","))
+                      }
+                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">miles</span>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Keyword and ZIP side by side */}
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-3 space-y-1">
@@ -591,94 +683,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            {/* Now add the vehicle-specific form fields to the JSX
-            // Add this after the price inputs and before the radius slider: */}
-            {showVehicleFields && (
-              <div className="space-y-3 p-3 bg-gray-50 rounded-md border border-gray-200">
-                <h3 className="font-medium text-sm">Vehicle Details</h3>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="year" className="text-xs font-medium">
-                      Year
-                    </Label>
-                    <Input
-                      id="year"
-                      name="year"
-                      type="text"
-                      placeholder="e.g. 2018"
-                      value={vehicleFields.year}
-                      onChange={handleVehicleFieldChange}
-                      className="h-8 text-sm"
-                      disabled={isSubmitting || submitClicked}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="make" className="text-xs font-medium">
-                      Make
-                    </Label>
-                    <Input
-                      id="make"
-                      name="make"
-                      type="text"
-                      placeholder="e.g. Toyota"
-                      value={vehicleFields.make}
-                      onChange={handleVehicleFieldChange}
-                      className="h-8 text-sm"
-                      disabled={isSubmitting || submitClicked}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="model" className="text-xs font-medium">
-                      Model
-                    </Label>
-                    <Input
-                      id="model"
-                      name="model"
-                      type="text"
-                      placeholder="e.g. Camry"
-                      value={vehicleFields.model}
-                      onChange={handleVehicleFieldChange}
-                      className="h-8 text-sm"
-                      disabled={isSubmitting || submitClicked}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="minMileage" className="text-xs font-medium">
-                      Min Mileage
-                    </Label>
-                    <Input
-                      id="minMileage"
-                      name="minMileage"
-                      type="text"
-                      placeholder="e.g. 0"
-                      value={vehicleFields.minMileage}
-                      onChange={handleVehicleFieldChange}
-                      className="h-8 text-sm"
-                      disabled={isSubmitting || submitClicked}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="maxMileage" className="text-xs font-medium">
-                      Max Mileage
-                    </Label>
-                    <Input
-                      id="maxMileage"
-                      name="maxMileage"
-                      type="text"
-                      placeholder="e.g. 100,000"
-                      value={vehicleFields.maxMileage}
-                      onChange={handleVehicleFieldChange}
-                      className="h-8 text-sm"
-                      disabled={isSubmitting || submitClicked}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
             <div className="space-y-1">
               <div>
                 <Label htmlFor="radius" className="text-sm font-medium">
