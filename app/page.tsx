@@ -16,6 +16,21 @@ import { supabase } from "@/lib/supabaseClient"
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
 
+// Add the category type and options at the top of the file, after the MarketplaceOption type
+
+type CategoryOption =
+  | "all"
+  | "electronics"
+  | "furniture"
+  | "clothing"
+  | "vehicles"
+  | "toys"
+  | "sports"
+  | "collectibles"
+  | "tools"
+  | "jewelry"
+  | "books"
+
 export default function Home() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -24,6 +39,10 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [radius, setRadius] = useState(1)
   const [marketplace, setMarketplace] = useState<MarketplaceOption>("craigslist")
+
+  // Add a new state for the selected category after the marketplace state
+  const [category, setCategory] = useState<CategoryOption>("all")
+
   const [maxPrice, setMaxPrice] = useState("")
   const [keyword, setKeyword] = useState("")
   const [zipCode, setZipCode] = useState("")
@@ -235,6 +254,10 @@ export default function Home() {
       // Add marketplace to form data
       formData.append("marketplace", marketplace)
 
+      // Add the category to the form data in the handleSubmit function, inside the try block
+      // Add this after the marketplace is appended to formData
+      formData.append("category", category)
+
       // Replace the formatted max price with the raw number
       formData.delete("maxPrice")
       const rawMaxPrice = maxPrice.replace(/,/g, "")
@@ -414,7 +437,33 @@ export default function Home() {
                 </button>
               </div>
             </div>
-
+            // Add the category selector component after the marketplace toggle buttons and before the keyword/zip
+            inputs // Insert this code after the marketplace toggle div and before the keyword/zip grid:
+            <div className="space-y-1">
+              <Label htmlFor="category" className="text-sm font-medium">
+                Category
+              </Label>
+              <select
+                id="category"
+                name="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value as CategoryOption)}
+                className="w-full h-9 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+              >
+                <option value="all">All Categories</option>
+                <option value="electronics">Electronics</option>
+                <option value="furniture">Furniture</option>
+                <option value="clothing">Clothing & Accessories</option>
+                <option value="vehicles">Vehicles</option>
+                <option value="toys">Toys & Games</option>
+                <option value="sports">Sporting Goods</option>
+                <option value="collectibles">Collectibles</option>
+                <option value="tools">Tools & Home Improvement</option>
+                <option value="jewelry">Jewelry & Watches</option>
+                <option value="books">Books & Media</option>
+              </select>
+            </div>
             {/* Keyword and ZIP side by side */}
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-3 space-y-1">
@@ -453,7 +502,6 @@ export default function Home() {
                 />
               </div>
             </div>
-
             {/* Price inputs side by side */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -496,7 +544,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-
             <div className="space-y-1">
               <div>
                 <Label htmlFor="radius" className="text-sm font-medium">
@@ -547,7 +594,6 @@ export default function Home() {
                 <div className="w-10 flex-shrink-0 text-xs">miles</div>
               </div>
             </div>
-
             <Button
               ref={submitButtonRef}
               type="submit"

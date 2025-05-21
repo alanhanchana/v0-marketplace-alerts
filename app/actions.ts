@@ -20,6 +20,7 @@ export async function createWatchlistItem(formData: FormData) {
     const zip = formData.get("zip") as string
     const radius = Number.parseInt(formData.get("radius") as string) || 1
     const marketplace = (formData.get("marketplace") as string) || "craigslist"
+    const category = (formData.get("category") as string) || "all"
 
     if (!keyword || isNaN(maxPrice) || !zip) {
       return {
@@ -98,6 +99,7 @@ export async function createWatchlistItem(formData: FormData) {
         zip,
         radius,
         marketplace,
+        category,
       },
     ])
 
@@ -202,6 +204,7 @@ export async function updateWatchlistItem(formData: FormData) {
     const zip = formData.get("zip") as string
     const radius = Number.parseInt(formData.get("radius") as string) || 1
     const marketplace = (formData.get("marketplace") as string) || "craigslist"
+    const category = (formData.get("category") as string) || "all"
 
     console.log("Updating watchlist item:", { id, keyword, maxPrice, zip, radius, marketplace })
 
@@ -261,6 +264,7 @@ export async function updateWatchlistItem(formData: FormData) {
         zip,
         radius,
         marketplace,
+        category,
       })
       .eq("id", id)
 

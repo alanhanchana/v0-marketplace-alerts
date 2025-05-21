@@ -31,6 +31,7 @@ interface EditAlertDialogProps {
     zip: string
     radius: number
     marketplace?: string
+    category?: string
   }
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -45,6 +46,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
   const [marketplace, setMarketplace] = useState<MarketplaceOption>(
     (alert.marketplace as MarketplaceOption) || "craigslist",
   )
+  const [category, setCategory] = useState(alert.category || "all")
   const [formValues, setFormValues] = useState({
     keyword: alert.keyword,
     minPrice: (alert.min_price || 0).toLocaleString("en-US"),
@@ -242,6 +244,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
       formData.append("zip", formValues.zip)
       formData.append("radius", radius.toString())
       formData.append("marketplace", marketplace)
+      formData.append("category", category)
 
       // Show optimistic toast immediately
       toast({
@@ -403,6 +406,30 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
                   OfferUp
                 </button>
               </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">
+                Category
+              </Label>
+              <select
+                id="category"
+                name="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="col-span-3 h-9 px-3 py-2 text-sm rounded-md border border-input bg-background"
+              >
+                <option value="all">All Categories</option>
+                <option value="electronics">Electronics</option>
+                <option value="furniture">Furniture</option>
+                <option value="clothing">Clothing & Accessories</option>
+                <option value="vehicles">Vehicles</option>
+                <option value="toys">Toys & Games</option>
+                <option value="sports">Sporting Goods</option>
+                <option value="collectibles">Collectibles</option>
+                <option value="tools">Tools & Home Improvement</option>
+                <option value="jewelry">Jewelry & Watches</option>
+                <option value="books">Books & Media</option>
+              </select>
             </div>
           </div>
           <DialogFooter>

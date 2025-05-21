@@ -44,6 +44,7 @@ interface Alert {
   zip: string
   radius: number
   marketplace?: string
+  category?: string
   created_at?: string
   muted?: boolean
   hasNewListings?: boolean
@@ -343,6 +344,103 @@ export default function AlertsPage() {
     }
   }
 
+  // Get category icon
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "electronics":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3 w-3 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+            <rect x="9" y="9" width="6" height="6"></rect>
+            <line x1="9" y1="1" x2="9" y2="4"></line>
+            <line x1="15" y1="1" x2="15" y2="4"></line>
+            <line x1="9" y1="20" x2="9" y2="23"></line>
+            <line x1="15" y1="20" x2="15" y2="23"></line>
+            <line x1="20" y1="9" x2="23" y2="9"></line>
+            <line x1="20" y1="14" x2="23" y2="14"></line>
+            <line x1="1" y1="9" x2="4" y2="9"></line>
+            <line x1="1" y1="14" x2="4" y2="14"></line>
+          </svg>
+        )
+      case "furniture":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3 w-3 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="6" rx="2"></rect>
+            <rect x="4" y="14" width="16" height="6" rx="2"></rect>
+            <line x1="6" y1="10" x2="6" y2="14"></line>
+            <line x1="18" y1="10" x2="18" y2="14"></line>
+          </svg>
+        )
+      case "clothing":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3 w-3 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z"></path>
+          </svg>
+        )
+      case "vehicles":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3 w-3 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="1" y="6" width="22" height="12" rx="2" ry="2"></rect>
+            <circle cx="7" cy="18" r="2"></circle>
+            <circle cx="17" cy="18" r="2"></circle>
+          </svg>
+        )
+      default:
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3 w-3 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"></path>
+          </svg>
+        )
+    }
+  }
+
   // Render notification bell with mute status
   const renderNotificationBell = (muted: boolean) => {
     if (muted) {
@@ -475,6 +573,10 @@ export default function AlertsPage() {
                           Range: {formatPrice(0)} - {formatPrice(alert.max_price)}
                         </p>
                       )}
+                    </div>
+                    <div className="flex items-center text-xs text-gray-600 mt-1">
+                      {getCategoryIcon(alert.category || "all")}
+                      <span className="capitalize">{alert.category === "all" ? "All Categories" : alert.category}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-600">
