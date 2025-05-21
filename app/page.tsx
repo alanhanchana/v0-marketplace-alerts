@@ -437,8 +437,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            // Add the category selector component after the marketplace toggle buttons and before the keyword/zip
-            inputs // Insert this code after the marketplace toggle div and before the keyword/zip grid:
+            {/* Category selector */}
             <div className="space-y-1">
               <Label htmlFor="category" className="text-sm font-medium">
                 Category
@@ -631,7 +630,7 @@ export default function Home() {
               ) : searchTermCounts[marketplace] >= 5 ? (
                 "Maximum Limit Reached"
               ) : (
-                "Start Watching"
+                "Save Search Term"
               )}
             </Button>
           </form>

@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Deal Finder - Find Undervalued Deals",
+  title: "Snipr - Find Undervalued Deals",
   description: "Get alerts for undervalued marketplace deals in your area",
     generator: 'v0.dev'
 }
