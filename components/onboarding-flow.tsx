@@ -21,7 +21,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const steps = [
     {
-      title: "Welcome to Snipr",
+      title: "Welcome to FlipSniper",
       description: "The AI-powered deal hunter that finds marketplace steals before anyone else.",
       content: (
         <div className="space-y-4 text-center">
@@ -29,8 +29,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <Target className="h-8 w-8 text-primary" />
           </div>
           <p className="text-muted-foreground">
-            Snipr uses AI to scan thousands of marketplace listings 24/7 and alerts you the moment underpriced deals
-            appear.
+            FlipSniper uses AI to scan thousands of marketplace listings 24/7 and alerts you the moment underpriced
+            deals appear.
           </p>
         </div>
       ),

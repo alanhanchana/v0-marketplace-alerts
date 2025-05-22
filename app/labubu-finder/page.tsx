@@ -123,14 +123,14 @@ export default function CarFlipperPage() {
         transition={{ duration: 0.3, delay: 0.1 }}
         className="relative"
       >
-        <Card className="discord-card overflow-hidden relative z-0 border-green-200 dark:border-green-900">
+        <Card className="discord-card overflow-hidden relative z-0 border-primary/20">
           <CardHeader className="space-y-1 p-4 pb-0">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl font-bold flex items-center">
-                <DollarSign className="h-5 w-5 mr-2 text-green-500" />
+                <DollarSign className="h-5 w-5 mr-2 text-primary" />
                 Quick Flip Scanner
               </CardTitle>
-              <div className="deal-badge-exclusive bg-green-500">
+              <div className="deal-badge-exclusive">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 Fast Cash
               </div>
@@ -313,7 +313,7 @@ export default function CarFlipperPage() {
 
               <Button
                 type="submit"
-                className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation bg-green-500 hover:bg-green-600 text-white"
+                className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation discord-button"
                 disabled={isSubmitting || !maxPrice}
               >
                 {isSubmitting ? (

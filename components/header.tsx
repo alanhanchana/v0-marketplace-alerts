@@ -20,7 +20,7 @@ export function Header() {
   const isLoggedIn = !pathname.includes("/login") && !pathname.includes("/signup")
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -52,29 +52,29 @@ export function Header() {
           </DropdownMenu>
 
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
               <Target className="h-4 w-4 text-primary" />
             </div>
-            <span className="text-xl font-bold hidden sm:inline-block">Snipr</span>
+            <span className="text-xl font-bold hidden sm:inline-block">FlipSniper</span>
           </Link>
 
           <nav className="hidden md:flex items-center space-x-1 ml-6">
             <Link
               href="/"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 pathname === "/"
-                  ? "bg-primary/10 text-primary dark:bg-primary/20"
-                  : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground/60 hover:text-foreground hover:bg-secondary"
               }`}
             >
               Home
             </Link>
             <Link
               href="/alerts"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 pathname === "/alerts"
-                  ? "bg-primary/10 text-primary dark:bg-primary/20"
-                  : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground/60 hover:text-foreground hover:bg-secondary"
               }`}
             >
               Watchlist

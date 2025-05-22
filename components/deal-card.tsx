@@ -69,7 +69,7 @@ export function DealCard({
     <SwipeableCard onSwipeRight={onView}>
       <Card className="discord-card overflow-hidden">
         <div className="relative">
-          <div className="relative h-48 w-full overflow-hidden">
+          <div className="relative h-48 w-full overflow-hidden rounded-t-xl">
             <Image
               src={image || "/placeholder.svg"}
               alt={title}
@@ -141,7 +141,7 @@ export function DealCard({
               <Share2 className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
-          <Button size="sm" className="discord-button" onClick={onView}>
+          <Button size="sm" className="discord-button hover:scale-105 transition-transform" onClick={onView}>
             <ExternalLink className="h-3.5 w-3.5 mr-1" />
             View Deal
           </Button>

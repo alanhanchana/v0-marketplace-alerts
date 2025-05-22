@@ -419,7 +419,7 @@ export default function Home() {
         >
           <h1 className="text-3xl md:text-4xl font-bold gradient-heading mb-3">Beat Everyone To The Best Deals</h1>
           <p className="text-muted-foreground max-w-sm mx-auto">
-            Snipr's AI scans marketplaces 24/7 and alerts you the second underpriced deals drop.
+            FlipSniper's AI scans marketplaces 24/7 and alerts you the second underpriced deals drop.
           </p>
         </motion.div>
 
@@ -764,7 +764,7 @@ export default function Home() {
                 <Button
                   ref={submitButtonRef}
                   type="submit"
-                  className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation discord-button"
+                  className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation discord-button animate-pulse-glow"
                   disabled={
                     isSubmitting || !isFormValid || searchTermCounts[marketplace] >= 5 || isLoading || submitClicked
                   }

@@ -283,7 +283,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] rounded-xl border-border/50 bg-card shadow-xl">
         <DialogHeader>
           <DialogTitle>Edit Alert</DialogTitle>
           <DialogDescription>Make changes to your alert here. Click save when you're done.</DialogDescription>
@@ -433,7 +433,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="discord-button">
               {isSubmitting ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>

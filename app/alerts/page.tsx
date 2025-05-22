@@ -512,14 +512,16 @@ export default function AlertsPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="mb-4 border-b"
+        className="mb-4 border-b border-border/50"
       >
         <div className="flex">
           <button
             onClick={() => setMarketplaceFilter("craigslist")}
-            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${getMarketplaceTabStyle(
-              "craigslist",
-            )}`}
+            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${
+              marketplaceFilter === "craigslist"
+                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            }`}
           >
             {getMarketplaceIcon("craigslist")}
             Craigslist
@@ -527,9 +529,11 @@ export default function AlertsPage() {
           </button>
           <button
             onClick={() => setMarketplaceFilter("facebook")}
-            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${getMarketplaceTabStyle(
-              "facebook",
-            )}`}
+            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${
+              marketplaceFilter === "facebook"
+                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            }`}
           >
             {getMarketplaceIcon("facebook")}
             FB Marketplace
@@ -537,9 +541,11 @@ export default function AlertsPage() {
           </button>
           <button
             onClick={() => setMarketplaceFilter("offerup")}
-            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${getMarketplaceTabStyle(
-              "offerup",
-            )}`}
+            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${
+              marketplaceFilter === "offerup"
+                ? "bg-primary/10 text-primary border-b-2 border-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            }`}
           >
             {getMarketplaceIcon("offerup")}
             OfferUp
