@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Bell, Ghost, Settings, PlusCircle } from "lucide-react"
+import { Home, Bell, TrendingUp, Settings, PlusCircle } from "lucide-react"
 
 export default function Footer() {
   const pathname = usePathname()
@@ -47,8 +47,8 @@ export default function Footer() {
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
           >
-            <Ghost className="h-5 w-5" />
-            <span className="text-xs mt-1">Labubu</span>
+            <TrendingUp className="h-5 w-5" />
+            <span className="text-xs mt-1">Flips</span>
           </Link>
 
           <Link

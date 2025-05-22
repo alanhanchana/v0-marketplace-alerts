@@ -8,60 +8,98 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Sparkles, Ghost, ArrowRight, Heart, Star } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, ArrowRight, DollarSign, Search, X } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-export default function LabubuFinderPage() {
+export default function CarFlipperPage() {
   const { toast } = useToast()
-  const [character, setCharacter] = useState("")
-  const [rarity, setRarity] = useState("common")
+  const [make, setMake] = useState("")
+  const [model, setModel] = useState("")
   const [maxPrice, setMaxPrice] = useState("")
+  const [excludedTerms, setExcludedTerms] = useState<string[]>([])
+  const [excludedTerm, setExcludedTerm] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [sources, setSources] = useState({
+    craigslist: true,
+    facebook: true,
+    offerup: false,
+    auctions: false,
+  })
+  const [conditions, setConditions] = useState({
+    clean: true,
+    salvage: false,
+    rebuilt: false,
+  })
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setError(null)
 
     // Simulate form submission
     setTimeout(() => {
       toast({
-        title: "🧸 Labubu Alert Set!",
-        description: `We'll notify you when we find a ${character} Labubu!`,
+        title: "💰 Deal Scanner Active",
+        description: `We'll alert you to undervalued ${make} ${model} listings under $${maxPrice}`,
         duration: 3000,
       })
       setIsSubmitting(false)
-    }, 1500)
+    }, 800)
   }
 
-  // Get rarity badge style
-  const getRarityBadgeStyle = (rarityOption: string): string => {
-    switch (rarityOption) {
-      case "common":
-        return "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
-      case "rare":
-        return "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
-      case "legendary":
-        return "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900/50"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700"
+  // Format number with commas
+  const formatNumberWithCommas = (value: string) => {
+    // Remove any non-digit characters
+    const digitsOnly = value.replace(/\D/g, "")
+
+    // Format with commas
+    if (digitsOnly) {
+      return new Intl.NumberFormat("en-US").format(Number.parseInt(digitsOnly))
+    }
+    return ""
+  }
+
+  // Handle price input change
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatNumberWithCommas(e.target.value)
+    setMaxPrice(formattedValue)
+  }
+
+  // Toggle source
+  const toggleSource = (source: keyof typeof sources) => {
+    setSources({
+      ...sources,
+      [source]: !sources[source],
+    })
+  }
+
+  // Toggle condition
+  const toggleCondition = (condition: keyof typeof conditions) => {
+    setConditions({
+      ...conditions,
+      [condition]: !conditions[condition],
+    })
+  }
+
+  // Add excluded term
+  const addExcludedTerm = () => {
+    if (excludedTerm && !excludedTerms.includes(excludedTerm)) {
+      setExcludedTerms([...excludedTerms, excludedTerm])
+      setExcludedTerm("")
     }
   }
 
-  // Get rarity icon
-  const getRarityIcon = (rarityOption: string) => {
-    switch (rarityOption) {
-      case "common":
-        return <Ghost className="h-3.5 w-3.5 mr-1" />
-      case "rare":
-        return <Sparkles className="h-3.5 w-3.5 mr-1" />
-      case "legendary":
-        return <Star className="h-3.5 w-3.5 mr-1" />
-      default:
-        return <Ghost className="h-3.5 w-3.5 mr-1" />
+  // Remove excluded term
+  const removeExcludedTerm = (term: string) => {
+    setExcludedTerms(excludedTerms.filter((t) => t !== term))
+  }
+
+  // Handle key press for excluded terms
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      addExcludedTerm()
     }
   }
 
@@ -70,104 +108,65 @@ export default function LabubuFinderPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 text-center"
+        transition={{ duration: 0.3 }}
+        className="mb-6 text-center"
       >
-        <h1 className="text-3xl md:text-4xl font-bold gradient-heading mb-3">Find Your Dream Labubu</h1>
+        <h1 className="text-3xl md:text-4xl font-bold gradient-heading mb-2">Car Flip Finder</h1>
         <p className="text-muted-foreground max-w-sm mx-auto">
-          Our Labubu-hunting AI scans the internet 24/7 to find your favorite collectible characters.
+          Scan listings 24/7 to catch undervalued vehicles before other flippers
         </p>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
         className="relative"
       >
-        {/* Stacked cards effect */}
-        <div className="absolute inset-0 discord-card stacked-card stacked-card-1 -z-10"></div>
-        <div className="absolute inset-0 discord-card stacked-card stacked-card-2 -z-20"></div>
-
-        <Card className="discord-card overflow-hidden relative z-0">
+        <Card className="discord-card overflow-hidden relative z-0 border-green-200 dark:border-green-900">
           <CardHeader className="space-y-1 p-4 pb-0">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl font-bold flex items-center">
-                <Ghost className="h-5 w-5 mr-2 text-pink-500" />
-                Labubu Hunter
+                <DollarSign className="h-5 w-5 mr-2 text-green-500" />
+                Quick Flip Scanner
               </CardTitle>
-              <div className="deal-badge-exclusive">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Collector Edition
+              <div className="deal-badge-exclusive bg-green-500">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                Fast Cash
               </div>
             </div>
-            <CardDescription>Tell us which Labubu you're hunting for</CardDescription>
+            <CardDescription>Find underpriced vehicles to flip for profit</CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-2">
-            {error && (
-              <Alert variant="destructive" className="mb-3 text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-3" noValidate>
-              {/* Rarity Toggle */}
-              <div className="flex justify-center mb-1">
-                <div className="inline-flex items-center p-1 bg-secondary rounded-lg flex-wrap justify-center">
-                  <button
-                    type="button"
-                    className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
-                      rarity === "common"
-                        ? getRarityBadgeStyle("common")
-                        : "text-muted-foreground hover:text-foreground border-transparent"
-                    }`}
-                    onClick={() => setRarity("common")}
-                  >
-                    {getRarityIcon("common")}
-                    Common
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
-                      rarity === "rare"
-                        ? getRarityBadgeStyle("rare")
-                        : "text-muted-foreground hover:text-foreground border-transparent"
-                    }`}
-                    onClick={() => setRarity("rare")}
-                  >
-                    {getRarityIcon("rare")}
-                    Rare
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
-                      rarity === "legendary"
-                        ? getRarityBadgeStyle("legendary")
-                        : "text-muted-foreground hover:text-foreground border-transparent"
-                    }`}
-                    onClick={() => setRarity("legendary")}
-                  >
-                    {getRarityIcon("legendary")}
-                    Legendary
-                  </button>
+              {/* Make and Model inputs */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="make" className="text-sm font-medium">
+                    Make
+                  </Label>
+                  <Input
+                    id="make"
+                    name="make"
+                    placeholder="e.g. Honda"
+                    className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                    value={make}
+                    onChange={(e) => setMake(e.target.value)}
+                  />
                 </div>
-              </div>
-
-              {/* Character input */}
-              <div className="space-y-1">
-                <Label htmlFor="character" className="text-sm font-medium">
-                  Which Labubu are you looking for?
-                </Label>
-                <Input
-                  id="character"
-                  name="character"
-                  placeholder="e.g. Dimoo, Skullpanda, Molly"
-                  className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                  required
-                  value={character}
-                  onChange={(e) => setCharacter(e.target.value)}
-                />
+                <div className="space-y-1">
+                  <Label htmlFor="model" className="text-sm font-medium">
+                    Model
+                  </Label>
+                  <Input
+                    id="model"
+                    name="model"
+                    placeholder="e.g. Civic"
+                    className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                  />
+                </div>
               </div>
 
               {/* Max price input */}
@@ -182,64 +181,140 @@ export default function LabubuFinderPage() {
                     name="maxPrice"
                     type="text"
                     inputMode="numeric"
-                    placeholder="100"
+                    placeholder="5,000"
                     value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
+                    onChange={handlePriceChange}
                     className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
                     required
                   />
                 </div>
               </div>
 
-              {/* Color options */}
+              {/* Sources */}
               <div className="space-y-1">
-                <Label className="text-sm font-medium">Color Variants</Label>
+                <Label className="text-sm font-medium">Where to Search</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  <div className="w-8 h-8 rounded-full bg-pink-400 cursor-pointer ring-2 ring-offset-2 ring-pink-400"></div>
-                  <div className="w-8 h-8 rounded-full bg-blue-400 cursor-pointer"></div>
-                  <div className="w-8 h-8 rounded-full bg-purple-400 cursor-pointer"></div>
-                  <div className="w-8 h-8 rounded-full bg-green-400 cursor-pointer"></div>
-                  <div className="w-8 h-8 rounded-full bg-yellow-400 cursor-pointer"></div>
-                  <div className="w-8 h-8 rounded-full bg-red-400 cursor-pointer"></div>
-                  <div className="w-8 h-8 rounded-full bg-gray-400 cursor-pointer"></div>
+                  <Badge
+                    variant={sources.craigslist ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      sources.craigslist ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleSource("craigslist")}
+                  >
+                    Craigslist
+                  </Badge>
+                  <Badge
+                    variant={sources.facebook ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      sources.facebook ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleSource("facebook")}
+                  >
+                    Facebook
+                  </Badge>
+                  <Badge
+                    variant={sources.offerup ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      sources.offerup ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleSource("offerup")}
+                  >
+                    OfferUp
+                  </Badge>
+                  <Badge
+                    variant={sources.auctions ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      sources.auctions ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleSource("auctions")}
+                  >
+                    Auctions
+                  </Badge>
                 </div>
               </div>
 
-              {/* Special features */}
+              {/* Title Condition */}
               <div className="space-y-1">
-                <Label className="text-sm font-medium">Special Features</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="glow" className="rounded text-pink-500 focus:ring-pink-500" />
-                    <label htmlFor="glow" className="text-sm">
-                      Glow in the Dark
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="limited" className="rounded text-pink-500 focus:ring-pink-500" />
-                    <label htmlFor="limited" className="text-sm">
-                      Limited Edition
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="signed" className="rounded text-pink-500 focus:ring-pink-500" />
-                    <label htmlFor="signed" className="text-sm">
-                      Artist Signed
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="boxed" className="rounded text-pink-500 focus:ring-pink-500" />
-                    <label htmlFor="boxed" className="text-sm">
-                      Original Box
-                    </label>
-                  </div>
+                <Label className="text-sm font-medium">Title Condition</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge
+                    variant={conditions.clean ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      conditions.clean ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleCondition("clean")}
+                  >
+                    Clean Title
+                  </Badge>
+                  <Badge
+                    variant={conditions.salvage ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      conditions.salvage ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleCondition("salvage")}
+                  >
+                    Salvage
+                  </Badge>
+                  <Badge
+                    variant={conditions.rebuilt ? "default" : "outline"}
+                    className={`cursor-pointer ${
+                      conditions.rebuilt ? "bg-green-500 hover:bg-green-600" : "hover:bg-green-100"
+                    }`}
+                    onClick={() => toggleCondition("rebuilt")}
+                  >
+                    Rebuilt
+                  </Badge>
                 </div>
+              </div>
+
+              {/* Excluded Terms */}
+              <div className="space-y-1">
+                <Label htmlFor="excludedTerms" className="text-sm font-medium">
+                  Exclude Listings With These Terms
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="excludedTerms"
+                    placeholder="e.g. damaged, project"
+                    value={excludedTerm}
+                    onChange={(e) => setExcludedTerm(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    className="h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    onClick={addExcludedTerm}
+                    disabled={!excludedTerm}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {excludedTerms.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {excludedTerms.map((term) => (
+                      <Badge key={term} variant="secondary" className="gap-1">
+                        {term}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full hover:bg-muted"
+                          onClick={() => removeExcludedTerm(term)}
+                        >
+                          <X className="h-3 w-3" />
+                          <span className="sr-only">Remove {term}</span>
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Button
                 type="submit"
-                className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation bg-pink-500 hover:bg-pink-600 text-white"
-                disabled={isSubmitting || !character || !maxPrice}
+                className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation bg-green-500 hover:bg-green-600 text-white"
+                disabled={isSubmitting || !maxPrice}
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center gap-2">
@@ -263,12 +338,12 @@ export default function LabubuFinderPage() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       ></path>
                     </svg>
-                    Processing...
+                    Scanning...
                   </span>
                 ) : (
                   <span className="flex items-center">
-                    <Heart className="mr-2 h-4 w-4" />
-                    Find My Labubu
+                    <Search className="mr-2 h-4 w-4" />
+                    Start Scanning For Deals
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </span>
                 )}
@@ -281,27 +356,22 @@ export default function LabubuFinderPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="mt-8 text-center"
+        transition={{ duration: 0.3, delay: 0.2 }}
+        className="mt-6 text-center"
       >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-center gap-4">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center mr-2">
-                <Sparkles className="h-4 w-4 text-pink-500" />
-              </div>
-              <span className="text-sm">Authentic Verification</span>
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center">
+            <div className="w-7 h-7 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mr-2">
+              <Search className="h-3.5 w-3.5 text-green-500" />
             </div>
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center mr-2">
-                <Heart className="h-4 w-4 text-pink-500" />
-              </div>
-              <span className="text-sm">Collector Network</span>
-            </div>
+            <span className="text-sm">24/7 Scanning</span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Join thousands of Labubu collectors finding their dream figures before anyone else!
-          </p>
+          <div className="flex items-center">
+            <div className="w-7 h-7 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mr-2">
+              <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+            </div>
+            <span className="text-sm">Instant Alerts</span>
+          </div>
         </div>
       </motion.div>
     </div>
