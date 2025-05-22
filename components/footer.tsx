@@ -9,8 +9,8 @@ export default function Footer() {
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/50">
-      <div className="container mx-auto max-w-md">
-        <div className="flex justify-around py-2">
+      <div className="container mx-auto max-w-md flex justify-center">
+        <div className="flex justify-around w-full py-2">
           <Link
             href="/"
             className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
