@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Bell, Search, Settings, PlusCircle } from "lucide-react"
+import { Home, Bell, Ghost, Settings, PlusCircle } from "lucide-react"
 
 export default function Footer() {
   const pathname = usePathname()
@@ -40,13 +40,15 @@ export default function Footer() {
           </Link>
 
           <Link
-            href="/search"
+            href="/labubu-finder"
             className={`flex flex-col items-center p-2 rounded-md transition-colors ${
-              pathname === "/search" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              pathname === "/labubu-finder"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
           >
-            <Search className="h-5 w-5" />
-            <span className="text-xs mt-1">Search</span>
+            <Ghost className="h-5 w-5" />
+            <span className="text-xs mt-1">Labubu</span>
           </Link>
 
           <Link
