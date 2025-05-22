@@ -101,8 +101,8 @@ export default function AlertsPage() {
 
   // Handle add new search term
   const handleAddNewSearchTerm = () => {
-    // Navigate to home page with the current marketplace filter
-    router.push(`/?marketplace=${marketplaceFilter}`)
+    // Navigate to target page with the current marketplace filter
+    router.push(`/target?marketplace=${marketplaceFilter}`)
   }
 
   // Toggle notification mute status
@@ -287,23 +287,17 @@ export default function AlertsPage() {
     }).format(price)
   }
 
-  // Get marketplace tab style
-  const getMarketplaceTabStyle = (marketplace: MarketplaceFilter) => {
-    switch (marketplace) {
+  // Get marketplace color class
+  const getMarketplaceColorClass = (marketplaceOption: MarketplaceFilter): string => {
+    switch (marketplaceOption) {
       case "craigslist":
-        return marketplaceFilter === marketplace
-          ? "bg-purple-100 text-purple-800 border-b-2 border-purple-500 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-400"
-          : "text-purple-600 hover:text-purple-800 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-900/20"
+        return "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
       case "facebook":
-        return marketplaceFilter === marketplace
-          ? "bg-blue-100 text-blue-800 border-b-2 border-blue-500 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-400"
-          : "text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20"
+        return "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
       case "offerup":
-        return marketplaceFilter === marketplace
-          ? "bg-green-100 text-green-800 border-b-2 border-green-500 dark:bg-green-900/30 dark:text-green-300 dark:border-green-400"
-          : "text-green-600 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20"
+        return "bg-green-100 text-green-800 border-green-300 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50"
       default:
-        return ""
+        return "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700"
     }
   }
 
@@ -314,7 +308,7 @@ export default function AlertsPage() {
         return (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 mr-1"
+            className="h-3.5 w-3.5 mr-1"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -331,7 +325,7 @@ export default function AlertsPage() {
         return (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 mr-1"
+            className="h-3.5 w-3.5 mr-1"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -346,7 +340,7 @@ export default function AlertsPage() {
         return (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 mr-1"
+            className="h-3.5 w-3.5 mr-1"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -507,50 +501,52 @@ export default function AlertsPage() {
         </h1>
       </motion.div>
 
-      {/* Marketplace filter tabs */}
+      {/* Marketplace filter tabs - Updated to match target page style */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="mb-4 border-b border-border/50"
+        className="mb-4"
       >
-        <div className="flex">
-          <button
-            onClick={() => setMarketplaceFilter("craigslist")}
-            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${
-              marketplaceFilter === "craigslist"
-                ? "bg-primary/10 text-primary border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            {getMarketplaceIcon("craigslist")}
-            Craigslist
-            <span className="ml-1 text-xs opacity-75">({searchTermCounts.craigslist}/5)</span>
-          </button>
-          <button
-            onClick={() => setMarketplaceFilter("facebook")}
-            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${
-              marketplaceFilter === "facebook"
-                ? "bg-primary/10 text-primary border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            {getMarketplaceIcon("facebook")}
-            FB Marketplace
-            <span className="ml-1 text-xs opacity-75">({searchTermCounts.facebook}/5)</span>
-          </button>
-          <button
-            onClick={() => setMarketplaceFilter("offerup")}
-            className={`flex items-center justify-center py-2 px-3 text-center text-sm font-medium ${
-              marketplaceFilter === "offerup"
-                ? "bg-primary/10 text-primary border-b-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            {getMarketplaceIcon("offerup")}
-            OfferUp
-            <span className="ml-1 text-xs opacity-75">({searchTermCounts.offerup}/5)</span>
-          </button>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center p-1 bg-secondary rounded-lg flex-wrap justify-center">
+            <button
+              onClick={() => setMarketplaceFilter("craigslist")}
+              className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
+                marketplaceFilter === "craigslist"
+                  ? getMarketplaceColorClass("craigslist")
+                  : "text-muted-foreground hover:text-foreground border-transparent"
+              }`}
+            >
+              {getMarketplaceIcon("craigslist")}
+              Craigslist
+              <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.craigslist}/5)</span>
+            </button>
+            <button
+              onClick={() => setMarketplaceFilter("facebook")}
+              className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
+                marketplaceFilter === "facebook"
+                  ? getMarketplaceColorClass("facebook")
+                  : "text-muted-foreground hover:text-foreground border-transparent"
+              }`}
+            >
+              {getMarketplaceIcon("facebook")}
+              FB Marketplace
+              <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.facebook}/5)</span>
+            </button>
+            <button
+              onClick={() => setMarketplaceFilter("offerup")}
+              className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
+                marketplaceFilter === "offerup"
+                  ? getMarketplaceColorClass("offerup")
+                  : "text-muted-foreground hover:text-foreground border-transparent"
+              }`}
+            >
+              {getMarketplaceIcon("offerup")}
+              OfferUp
+              <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.offerup}/5)</span>
+            </button>
+          </div>
         </div>
       </motion.div>
 

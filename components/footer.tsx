@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Bell, Target, Settings, PlusCircle } from "lucide-react"
+import { Home, Bell, Settings, PlusCircle, BookmarkIcon } from "lucide-react"
 
 export default function Footer() {
   const pathname = usePathname()
@@ -22,13 +22,13 @@ export default function Footer() {
           </Link>
 
           <Link
-            href="/target"
+            href="/alerts"
             className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-              pathname === "/target" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              pathname === "/alerts" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             }`}
           >
-            <Target className="h-5 w-5" />
-            <span className="text-xs mt-1">Target</span>
+            <BookmarkIcon className="h-5 w-5" />
+            <span className="text-xs mt-1">Saved</span>
           </Link>
 
           <Link
@@ -40,13 +40,15 @@ export default function Footer() {
           </Link>
 
           <Link
-            href="/alerts"
+            href="/notifications"
             className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-              pathname === "/alerts" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              pathname === "/notifications"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             }`}
           >
             <Bell className="h-5 w-5" />
-            <span className="text-xs mt-1">Saved</span>
+            <span className="text-xs mt-1">Notifications</span>
           </Link>
 
           <Link

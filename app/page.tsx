@@ -4,15 +4,17 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { motion } from "framer-motion"
-import { Bell, Clock, Zap } from "lucide-react"
+import { Clock, Zap, Grid, List } from "lucide-react"
 import { DealCard } from "@/components/deal-card"
 import { OnboardingFlow } from "@/components/onboarding-flow"
 
+// Add viewMode state
 export default function Home() {
   const [activeTab, setActiveTab] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
   const [deals, setDeals] = useState<any[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [viewMode, setViewMode] = useState<"list" | "gallery">("list")
 
   // Check if this is the first visit
   useEffect(() => {
@@ -163,16 +165,72 @@ export default function Home() {
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     <span>Last updated 2 minutes ago</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
-                    <Bell className="h-3.5 w-3.5 mr-1" />
-                    Notifications
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                      <span className="sr-only">List View</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "gallery" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("gallery")}
+                    >
+                      <Grid className="h-3.5 w-3.5" />
+                      <span className="sr-only">Gallery View</span>
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredDeals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} />
-                  ))}
-                </div>
+                {viewMode === "list" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDeals.map((deal) => (
+                      <DealCard key={deal.id} deal={deal} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredDeals.map((deal) => (
+                      <motion.div
+                        key={deal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-md">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              <div className="relative aspect-square w-full">
+                                <img
+                                  src={deal.image || "/placeholder.svg"}
+                                  alt={deal.title}
+                                  className="object-cover w-full h-full"
+                                />
+                                {deal.isHot && (
+                                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0.5 px-2 rounded-full flex items-center">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Hot
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <h3 className="font-medium text-xs line-clamp-1">{deal.title}</h3>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-sm font-bold text-primary">${deal.price}</span>
+                                  <span className="text-xs text-muted-foreground">{deal.distance} mi</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-center pt-4 pb-8">
                   <Button variant="outline" size="sm" className="text-xs">
                     Load More Deals
@@ -205,16 +263,72 @@ export default function Home() {
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     <span>Last updated 2 minutes ago</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
-                    <Bell className="h-3.5 w-3.5 mr-1" />
-                    Notifications
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                      <span className="sr-only">List View</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "gallery" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("gallery")}
+                    >
+                      <Grid className="h-3.5 w-3.5" />
+                      <span className="sr-only">Gallery View</span>
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredDeals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} />
-                  ))}
-                </div>
+                {viewMode === "list" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDeals.map((deal) => (
+                      <DealCard key={deal.id} deal={deal} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredDeals.map((deal) => (
+                      <motion.div
+                        key={deal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-md">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              <div className="relative aspect-square w-full">
+                                <img
+                                  src={deal.image || "/placeholder.svg"}
+                                  alt={deal.title}
+                                  className="object-cover w-full h-full"
+                                />
+                                {deal.isHot && (
+                                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0.5 px-2 rounded-full flex items-center">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Hot
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <h3 className="font-medium text-xs line-clamp-1">{deal.title}</h3>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-sm font-bold text-primary">${deal.price}</span>
+                                  <span className="text-xs text-muted-foreground">{deal.distance} mi</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-center pt-4 pb-8">
                   <Button variant="outline" size="sm" className="text-xs">
                     Load More Deals
@@ -246,16 +360,72 @@ export default function Home() {
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     <span>Last updated 2 minutes ago</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
-                    <Bell className="h-3.5 w-3.5 mr-1" />
-                    Notifications
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                      <span className="sr-only">List View</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "gallery" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("gallery")}
+                    >
+                      <Grid className="h-3.5 w-3.5" />
+                      <span className="sr-only">Gallery View</span>
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredDeals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} />
-                  ))}
-                </div>
+                {viewMode === "list" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDeals.map((deal) => (
+                      <DealCard key={deal.id} deal={deal} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredDeals.map((deal) => (
+                      <motion.div
+                        key={deal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-md">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              <div className="relative aspect-square w-full">
+                                <img
+                                  src={deal.image || "/placeholder.svg"}
+                                  alt={deal.title}
+                                  className="object-cover w-full h-full"
+                                />
+                                {deal.isHot && (
+                                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0.5 px-2 rounded-full flex items-center">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Hot
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <h3 className="font-medium text-xs line-clamp-1">{deal.title}</h3>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-sm font-bold text-primary">${deal.price}</span>
+                                  <span className="text-xs text-muted-foreground">{deal.distance} mi</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-center pt-4 pb-8">
                   <Button variant="outline" size="sm" className="text-xs">
                     Load More Deals
@@ -287,16 +457,72 @@ export default function Home() {
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     <span>Last updated 2 minutes ago</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
-                    <Bell className="h-3.5 w-3.5 mr-1" />
-                    Notifications
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                      <span className="sr-only">List View</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "gallery" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("gallery")}
+                    >
+                      <Grid className="h-3.5 w-3.5" />
+                      <span className="sr-only">Gallery View</span>
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredDeals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} />
-                  ))}
-                </div>
+                {viewMode === "list" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDeals.map((deal) => (
+                      <DealCard key={deal.id} deal={deal} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredDeals.map((deal) => (
+                      <motion.div
+                        key={deal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-md">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              <div className="relative aspect-square w-full">
+                                <img
+                                  src={deal.image || "/placeholder.svg"}
+                                  alt={deal.title}
+                                  className="object-cover w-full h-full"
+                                />
+                                {deal.isHot && (
+                                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0.5 px-2 rounded-full flex items-center">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Hot
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <h3 className="font-medium text-xs line-clamp-1">{deal.title}</h3>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-sm font-bold text-primary">${deal.price}</span>
+                                  <span className="text-xs text-muted-foreground">{deal.distance} mi</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-center pt-4 pb-8">
                   <Button variant="outline" size="sm" className="text-xs">
                     Load More Deals
@@ -328,16 +554,72 @@ export default function Home() {
                     <Clock className="h-3.5 w-3.5 mr-1" />
                     <span>Last updated 2 minutes ago</span>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs">
-                    <Bell className="h-3.5 w-3.5 mr-1" />
-                    Notifications
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                      <span className="sr-only">List View</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "gallery" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setViewMode("gallery")}
+                    >
+                      <Grid className="h-3.5 w-3.5" />
+                      <span className="sr-only">Gallery View</span>
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredDeals.map((deal) => (
-                    <DealCard key={deal.id} deal={deal} />
-                  ))}
-                </div>
+                {viewMode === "list" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredDeals.map((deal) => (
+                      <DealCard key={deal.id} deal={deal} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredDeals.map((deal) => (
+                      <motion.div
+                        key={deal.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-md">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              <div className="relative aspect-square w-full">
+                                <img
+                                  src={deal.image || "/placeholder.svg"}
+                                  alt={deal.title}
+                                  className="object-cover w-full h-full"
+                                />
+                                {deal.isHot && (
+                                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0.5 px-2 rounded-full flex items-center">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Hot
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2">
+                                <h3 className="font-medium text-xs line-clamp-1">{deal.title}</h3>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-sm font-bold text-primary">${deal.price}</span>
+                                  <span className="text-xs text-muted-foreground">{deal.distance} mi</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
                 <div className="text-center pt-4 pb-8">
                   <Button variant="outline" size="sm" className="text-xs">
                     Load More Deals
