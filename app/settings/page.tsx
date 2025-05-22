@@ -4,11 +4,30 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UserAvatar } from "@/components/user-avatar"
+import { ModeToggle } from "@/components/mode-toggle"
+import { Target } from "lucide-react"
 
 export default function SettingsPage() {
   return (
     <div className="py-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6">Settings</h1>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Target className="h-5 w-5 text-primary" />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold">FlipSniper</h1>
+        </div>
+        <ModeToggle />
+      </div>
+
+      <div className="flex items-center gap-4 mb-8 p-4 bg-secondary/30 rounded-xl">
+        <UserAvatar />
+        <div>
+          <h2 className="font-medium">Demo User</h2>
+          <p className="text-sm text-muted-foreground">demo@example.com</p>
+        </div>
+      </div>
 
       <Tabs defaultValue="account" className="w-full">
         <TabsList className="mb-6">

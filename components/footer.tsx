@@ -3,9 +3,11 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Bell, TrendingUp, Settings, PlusCircle } from "lucide-react"
+import { useTheme } from "next-themes"
 
 export default function Footer() {
   const pathname = usePathname()
+  const { theme, setTheme } = useTheme()
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/50">
