@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Zap, Target, ArrowRight, Rocket, Bell } from "lucide-react"
+import { AlertCircle, Zap, Target, ArrowRight, Rocket } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabaseClient"
 import { motion } from "framer-motion"
@@ -410,16 +410,16 @@ export default function Home() {
     <>
       {showOnboarding && <OnboardingFlow onComplete={() => setShowOnboarding(false)} />}
 
-      <div className="py-8 max-w-md mx-auto">
+      <div className="py-6 max-w-md mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-8 text-center"
+          className="mb-5 text-center"
         >
-          <h1 className="text-3xl md:text-4xl font-bold gradient-heading mb-3">Beat Everyone To The Best Deals</h1>
-          <p className="text-muted-foreground max-w-sm mx-auto">
-            FlipSniper's AI scans marketplaces 24/7 and alerts you the second underpriced deals drop.
+          <h1 className="text-2xl md:text-3xl font-bold gradient-heading mb-2">Snipe Deals Before Anyone Else</h1>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            FlipSniper tracks marketplaces 24/7 and alerts you when underpriced flips drop.
           </p>
         </motion.div>
 
@@ -544,43 +544,21 @@ export default function Home() {
                   </select>
                 </div>
 
-                {/* Keyword and ZIP side by side */}
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="col-span-3 space-y-1">
-                    <Label htmlFor="keyword" className="text-sm font-medium">
-                      What are you hunting for?
-                    </Label>
-                    <Input
-                      id="keyword"
-                      name="keyword"
-                      placeholder="e.g. iPhone 14, PS5, Herman Miller"
-                      className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      required
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                      value={keyword}
-                      onChange={(e) => setKeyword(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-span-1 space-y-1">
-                    <Label htmlFor="zip" className="text-sm font-medium">
-                      ZIP Code
-                    </Label>
-                    <Input
-                      id="zip"
-                      name="zip"
-                      placeholder="ZIP"
-                      className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      required
-                      pattern="[0-9]{5}"
-                      maxLength={5}
-                      minLength={5}
-                      inputMode="numeric"
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                      title="Please enter a valid 5-digit ZIP code"
-                      value={zipCode}
-                      onChange={(e) => setZipCode(e.target.value)}
-                    />
-                  </div>
+                {/* Keyword field - now full width */}
+                <div className="space-y-1">
+                  <Label htmlFor="keyword" className="text-sm font-medium">
+                    What are you hunting for?
+                  </Label>
+                  <Input
+                    id="keyword"
+                    name="keyword"
+                    placeholder="e.g. iPhone 14, PS5, Herman Miller"
+                    className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                    required
+                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                  />
                 </div>
 
                 {/* Price inputs side by side */}
@@ -714,50 +692,74 @@ export default function Home() {
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label htmlFor="radius" className="text-sm font-medium">
-                      Search Radius
-                    </Label>
-                    <span className="text-xs text-muted-foreground">{radius} miles</span>
-                  </div>
+                {/* Search Radius and ZIP Code side by side */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 space-y-1">
+                    <div className="flex justify-between">
+                      <Label htmlFor="radius" className="text-sm font-medium">
+                        Search Radius
+                      </Label>
+                      <span className="text-xs text-muted-foreground">{radius} miles</span>
+                    </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex-grow">
-                      <div>
-                        <input
-                          ref={sliderRef}
-                          type="range"
-                          id="radius-slider"
-                          min="0"
-                          max="100"
-                          value={radius}
-                          onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value))}
-                          className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                          disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground px-1 mt-1">
-                          <span>0</span>
-                          <span>25</span>
-                          <span>50</span>
-                          <span>75</span>
-                          <span>100</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-grow">
+                        <div>
+                          <input
+                            ref={sliderRef}
+                            type="range"
+                            id="radius-slider"
+                            min="0"
+                            max="100"
+                            value={radius}
+                            onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value))}
+                            className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                            disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground px-1 mt-1">
+                            <span>0</span>
+                            <span>25</span>
+                            <span>50</span>
+                            <span>75</span>
+                            <span>100</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="w-16 flex-shrink-0">
-                      <Input
-                        type="text"
-                        id="radius"
-                        name="radius"
-                        value={radius}
-                        onChange={handleRadiusInputChange}
-                        className="h-8 text-center text-sm"
-                        disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                        aria-label="Radius in miles"
-                      />
+                      <div className="w-16 flex-shrink-0">
+                        <Input
+                          type="text"
+                          id="radius"
+                          name="radius"
+                          value={radius}
+                          onChange={handleRadiusInputChange}
+                          className="h-8 text-center text-sm"
+                          disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                          aria-label="Radius in miles"
+                        />
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="col-span-1 space-y-1">
+                    <Label htmlFor="zip" className="text-sm font-medium">
+                      ZIP Code
+                    </Label>
+                    <Input
+                      id="zip"
+                      name="zip"
+                      placeholder="ZIP"
+                      className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      required
+                      pattern="[0-9]{5}"
+                      maxLength={5}
+                      minLength={5}
+                      inputMode="numeric"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                      title="Please enter a valid 5-digit ZIP code"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                    />
                   </div>
                 </div>
 
@@ -808,33 +810,6 @@ export default function Home() {
               </form>
             </CardContent>
           </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-8 text-center"
-        >
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mr-2">
-                  <Zap className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-sm">24/7 AI Scanning</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mr-2">
-                  <Bell className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-sm">Instant Alerts</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Snipr finds deals seconds after they're posted, giving you the edge over other buyers.
-            </p>
-          </div>
         </motion.div>
       </div>
     </>
