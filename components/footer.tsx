@@ -2,12 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Bell, TrendingUp, Settings, PlusCircle } from "lucide-react"
-import { useTheme } from "next-themes"
+import { Home, Bell, Target, Settings, PlusCircle } from "lucide-react"
 
 export default function Footer() {
   const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/50">
@@ -24,17 +22,17 @@ export default function Footer() {
           </Link>
 
           <Link
-            href="/alerts"
+            href="/target"
             className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-              pathname === "/alerts" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              pathname === "/target" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             }`}
           >
-            <Bell className="h-5 w-5" />
-            <span className="text-xs mt-1">Watchlist</span>
+            <Target className="h-5 w-5" />
+            <span className="text-xs mt-1">Target</span>
           </Link>
 
           <Link
-            href="/"
+            href="/target"
             className="flex flex-col items-center p-2 -mt-5 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all"
           >
             <PlusCircle className="h-8 w-8" />
@@ -42,15 +40,13 @@ export default function Footer() {
           </Link>
 
           <Link
-            href="/labubu-finder"
+            href="/alerts"
             className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
-              pathname === "/labubu-finder"
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              pathname === "/alerts" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             }`}
           >
-            <TrendingUp className="h-5 w-5" />
-            <span className="text-xs mt-1">Flips</span>
+            <Bell className="h-5 w-5" />
+            <span className="text-xs mt-1">Saved</span>
           </Link>
 
           <Link

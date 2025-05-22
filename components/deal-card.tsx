@@ -1,52 +1,30 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CountdownTimer } from "@/components/countdown-timer"
-import { SwipeableCard } from "@/components/swipeable-card"
-import { ExternalLink, Heart, Share2, Zap } from "lucide-react"
+import { Clock, MapPin, ExternalLink, Heart, Zap, DollarSign } from "lucide-react"
 import Image from "next/image"
+import { motion } from "framer-motion"
 
-interface DealCardProps {
-  id: string
-  title: string
-  price: number
-  originalPrice?: number
-  image: string
-  location: string
-  distance: number
-  source: string
-  condition: string
-  isNew?: boolean
-  isHot?: boolean
-  isExclusive?: boolean
-  endTime: Date
-  onView: () => void
-  onSave?: () => void
-  onShare?: () => void
+interface DealProps {
+  deal: {
+    id: string
+    title: string
+    price: number
+    originalPrice: number
+    discount: number
+    location: string
+    distance: number
+    image: string
+    timePosted: string
+    source: string
+    isHot: boolean
+    category: string
+  }
 }
 
-export function DealCard({
-  id,
-  title,
-  price,
-  originalPrice,
-  image,
-  location,
-  distance,
-  source,
-  condition,
-  isNew = false,
-  isHot = false,
-  isExclusive = false,
-  endTime,
-  onView,
-  onSave,
-  onShare,
-}: DealCardProps) {
-  const [saved, setSaved] = useState(false)
-
+export function DealCard({ deal }: DealProps) {
   // Format price with dollar sign and commas
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -57,96 +35,158 @@ export function DealCard({
     }).format(price)
   }
 
-  // Calculate discount percentage
-  const discountPercentage = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0
+  // Get source icon
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case "craigslist":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 7V4h16v3" />
+            <path d="M9 20h6" />
+            <path d="M12 4v16" />
+          </svg>
+        )
+      case "facebook":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+          </svg>
+        )
+      case "offerup":
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z" />
+          </svg>
+        )
+      default:
+        return null
+    }
+  }
 
-  const handleSave = () => {
-    setSaved(!saved)
-    if (onSave) onSave()
+  // Get source color class
+  const getSourceColorClass = (source: string) => {
+    switch (source) {
+      case "craigslist":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+      case "facebook":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+      case "offerup":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+    }
   }
 
   return (
-    <SwipeableCard onSwipeRight={onView}>
-      <Card className="discord-card overflow-hidden">
-        <div className="relative">
-          <div className="relative h-48 w-full overflow-hidden rounded-t-xl">
-            <Image
-              src={image || "/placeholder.svg"}
-              alt={title}
-              fill
-              className="object-cover transition-transform hover:scale-105"
-              sizes="(max-width: 768px) 100vw, 400px"
-            />
-          </div>
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {isNew && (
-              <div className="deal-badge-new">
-                <Zap className="h-3 w-3 mr-1" />
-                New
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -100 }}
+      transition={{ duration: 0.3 }}
+      className="relative h-full"
+    >
+      <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-md h-full">
+        <CardContent className="p-0">
+          <div className="flex">
+            <div className="relative w-1/3 h-32">
+              <Image
+                src={deal.image || "/placeholder.svg"}
+                alt={deal.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 33vw"
+              />
+              {deal.isHot && (
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0.5 px-2 rounded-full flex items-center">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Hot Deal
+                </div>
+              )}
+              <div className="absolute bottom-2 left-2">
+                <Badge variant="secondary" className={`text-xs ${getSourceColorClass(deal.source)}`}>
+                  {getSourceIcon(deal.source)}
+                  {deal.source === "facebook"
+                    ? "FB Marketplace"
+                    : deal.source.charAt(0).toUpperCase() + deal.source.slice(1)}
+                </Badge>
               </div>
-            )}
-            {isHot && (
-              <div className="deal-badge-hot">
-                <Zap className="h-3 w-3 mr-1" />
-                Hot Deal
+            </div>
+            <div className="w-2/3 p-3 flex flex-col justify-between">
+              <div>
+                <h3 className="font-medium text-sm line-clamp-2 mb-1">{deal.title}</h3>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center">
+                    <span className="text-lg font-bold text-primary">{formatPrice(deal.price)}</span>
+                    {deal.discount > 0 && (
+                      <span className="text-xs line-through text-muted-foreground ml-2">
+                        {formatPrice(deal.originalPrice)}
+                      </span>
+                    )}
+                  </div>
+                  {deal.discount > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="bg-green-100 text-green-800 border-green-200 text-xs dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
+                    >
+                      <DollarSign className="h-3 w-3 mr-0.5" />
+                      {deal.discount}% off
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  <span>
+                    {deal.location} • {deal.distance} mi
+                  </span>
+                </div>
               </div>
-            )}
-            {isExclusive && (
-              <div className="deal-badge-exclusive">
-                <Zap className="h-3 w-3 mr-1" />
-                Exclusive
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3 mr-1" />
+                  <span>{deal.timePosted}</span>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Heart className="h-4 w-4" />
+                    <span className="sr-only">Save</span>
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="sr-only">Open</span>
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
-          <div className="absolute top-2 right-2">
-            <CountdownTimer endTime={endTime} />
-          </div>
-        </div>
-        <CardContent className="p-3">
-          <h3 className="font-medium text-base line-clamp-2 mb-1">{title}</h3>
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold">{formatPrice(price)}</span>
-            {originalPrice && (
-              <>
-                <span className="text-sm text-muted-foreground line-through">{formatPrice(originalPrice)}</span>
-                <span className="text-xs text-green-600 dark:text-green-400">-{discountPercentage}%</span>
-              </>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-1 mt-2">
-            <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{location}</span>
-            <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{distance} mi</span>
-            <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{condition}</span>
-            <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{source}</span>
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="p-3 pt-0 flex justify-between">
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 rounded-full"
-              onClick={handleSave}
-              aria-label="Save deal"
-            >
-              <Heart className={`h-4 w-4 ${saved ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 rounded-full"
-              onClick={onShare}
-              aria-label="Share deal"
-            >
-              <Share2 className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </div>
-          <Button size="sm" className="discord-button hover:scale-105 transition-transform" onClick={onView}>
-            <ExternalLink className="h-3.5 w-3.5 mr-1" />
-            View Deal
-          </Button>
-        </CardFooter>
       </Card>
-    </SwipeableCard>
+    </motion.div>
   )
 }

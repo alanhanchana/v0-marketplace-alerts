@@ -54,7 +54,10 @@ const generateMockListings = (keyword: string, maxPrice: number, marketplace: st
     const price = Math.round(basePrice * priceMultiplier)
 
     // Generate original price (higher than actual price)
-    const originalPrice = Math.random() > 0.3 ? Math.round(price * (1 + Math.random() * 0.5)) : undefined
+    const originalPrice = Math.random() > 0.3 ? Math.round(price * (1 + Math.random() * 0.5)) : price
+
+    // Calculate discount percentage
+    const discount = originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0
 
     // Generate a random date within the last 7 days
     const date = new Date()
@@ -68,19 +71,24 @@ const generateMockListings = (keyword: string, maxPrice: number, marketplace: st
     endTime.setHours(endTime.getHours() + Math.floor(Math.random() * 23) + 1)
 
     // Determine if it's a hot deal (significant discount)
-    const isHot = originalPrice ? (originalPrice - price) / originalPrice > 0.3 : false
+    const isHot = discount > 30
 
     // Determine if it's exclusive (random, but less common)
     const isExclusive = Math.random() > 0.85
+
+    // Generate time posted string
+    const hoursAgo = Math.floor(Math.random() * 24) + 1
+    const timePosted = hoursAgo === 1 ? "1 hour ago" : `${hoursAgo} hours ago`
 
     listings.push({
       id: `listing-${i}`,
       title: `${keyword} ${["Pro", "Like New", "Barely Used", "Great Condition", "Must Sell", "Best Deal"][Math.floor(Math.random() * 6)]}`,
       price,
       originalPrice,
+      discount,
       image: images[Math.floor(Math.random() * images.length)],
       location: ["Brooklyn", "Manhattan", "Queens", "Bronx", "Staten Island"][Math.floor(Math.random() * 5)],
-      date: date.toLocaleDateString(),
+      timePosted,
       source: marketplace,
       distance: Math.floor(Math.random() * 20) + 1, // 1-20 miles
       condition: ["New", "Like New", "Good", "Fair", "Poor"][Math.floor(Math.random() * 5)],
@@ -89,6 +97,7 @@ const generateMockListings = (keyword: string, maxPrice: number, marketplace: st
       isExclusive,
       endTime,
       url: getMarketplaceUrl(marketplace, keyword), // Use the marketplace-specific URL
+      category: "electronics", // Default category for consistency
     })
   }
 
@@ -303,22 +312,20 @@ export default function ListingsPage() {
               transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
             >
               <DealCard
-                id={listing.id}
-                title={listing.title}
-                price={listing.price}
-                originalPrice={listing.originalPrice}
-                image={listing.image}
-                location={listing.location}
-                distance={listing.distance}
-                source={listing.source}
-                condition={listing.condition}
-                isNew={listing.isNew}
-                isHot={listing.isHot}
-                isExclusive={listing.isExclusive}
-                endTime={listing.endTime}
-                onView={() => handleViewListing(listing.url)}
-                onSave={() => console.log("Saved", listing.id)}
-                onShare={() => console.log("Shared", listing.id)}
+                deal={{
+                  id: listing.id,
+                  title: listing.title,
+                  price: listing.price,
+                  originalPrice: listing.originalPrice,
+                  discount: listing.discount,
+                  location: listing.location,
+                  distance: listing.distance,
+                  image: listing.image,
+                  timePosted: listing.timePosted,
+                  source: listing.source,
+                  isHot: listing.isHot,
+                  category: listing.category,
+                }}
               />
             </motion.div>
           ))}
