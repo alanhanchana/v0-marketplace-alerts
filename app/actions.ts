@@ -47,26 +47,6 @@ export async function createWatchlistItem(formData: FormData) {
 
     console.log("Creating watchlist item:", { keyword, maxPrice, zip, radius, marketplace })
 
-    // Extract vehicle-specific properties if category is "vehicles"
-    const vehicleProps: Record<string, any> = {}
-    if (category === "vehicles") {
-      const vehicleType = formData.get("vehicleType") as string
-      const minYear = formData.get("minYear") ? Number.parseInt(formData.get("minYear") as string) : null
-      const maxYear = formData.get("maxYear") ? Number.parseInt(formData.get("maxYear") as string) : null
-      const make = formData.get("make") as string
-      const model = formData.get("model") as string
-      const maxMileage = formData.get("maxMileage")
-        ? Number.parseInt((formData.get("maxMileage") as string).replace(/,/g, ""))
-        : null
-
-      if (vehicleType) vehicleProps.vehicle_type = vehicleType
-      if (minYear) vehicleProps.min_year = minYear
-      if (maxYear) vehicleProps.max_year = maxYear
-      if (make) vehicleProps.make = make
-      if (model) vehicleProps.model = model
-      if (maxMileage) vehicleProps.max_mileage = maxMileage
-    }
-
     // Check if a search term with the same keyword and marketplace already exists
     const { data: existingItems, error: checkError } = await supabase
       .from("watchlist")
@@ -120,7 +100,6 @@ export async function createWatchlistItem(formData: FormData) {
         radius,
         marketplace,
         category,
-        ...vehicleProps, // Spread the vehicle properties
       },
     ])
 
@@ -229,26 +208,6 @@ export async function updateWatchlistItem(formData: FormData) {
 
     console.log("Updating watchlist item:", { id, keyword, maxPrice, zip, radius, marketplace })
 
-    // Extract vehicle-specific properties if category is "vehicles"
-    const vehicleProps: Record<string, any> = {}
-    if (category === "vehicles") {
-      const vehicleType = formData.get("vehicleType") as string
-      const minYear = formData.get("minYear") ? Number.parseInt(formData.get("minYear") as string) : null
-      const maxYear = formData.get("maxYear") ? Number.parseInt(formData.get("maxYear") as string) : null
-      const make = formData.get("make") as string
-      const model = formData.get("model") as string
-      const maxMileage = formData.get("maxMileage")
-        ? Number.parseInt((formData.get("maxMileage") as string).replace(/,/g, ""))
-        : null
-
-      if (vehicleType) vehicleProps.vehicle_type = vehicleType
-      if (minYear) vehicleProps.min_year = minYear
-      if (maxYear) vehicleProps.max_year = maxYear
-      if (make) vehicleProps.make = make
-      if (model) vehicleProps.model = model
-      if (maxMileage) vehicleProps.max_mileage = maxMileage
-    }
-
     if (!id || !keyword || isNaN(maxPrice) || !zip) {
       return {
         success: false,
@@ -306,7 +265,6 @@ export async function updateWatchlistItem(formData: FormData) {
         radius,
         marketplace,
         category,
-        ...vehicleProps, // Spread the vehicle properties
       })
       .eq("id", id)
 

@@ -6,46 +6,74 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+
+    --primary: 262.1 83.3% 57.8%;
     --primary-foreground: 210 40% 98%;
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+
+    --accent: 262.1 83.3% 57.8%;
     --accent-foreground: 222.2 47.4% 11.2%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 262.1 83.3% 57.8%;
+
     --radius: 0.75rem;
+
+    --discord-blurple: 235 85.6% 64.7%;
+    --discord-bg: 220 7.7% 22.9%;
+    --discord-dark: 225 6.3% 12.5%;
+    --discord-sidebar: 223 6.7% 20.6%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 225 6.3% 12.5%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+
+    --card: 223 6.7% 20.6%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+
+    --popover: 223 6.7% 20.6%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
+
+    --primary: 262.1 83.3% 57.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
+
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144.9 80.4% 10%;
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 262.1 83.3% 57.8%;
   }
 }
 
@@ -64,6 +92,7 @@
     height: 8px;
     border-radius: 8px;
     outline: none;
+    background: hsl(var(--secondary));
   }
 
   /* Thumb styling */
@@ -73,9 +102,9 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: hsl(var(--primary));
     cursor: pointer;
-    border: 2px solid white;
+    border: 2px solid hsl(var(--background));
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
@@ -83,9 +112,9 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: hsl(var(--primary));
     cursor: pointer;
-    border: 2px solid white;
+    border: 2px solid hsl(var(--background));
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
@@ -95,11 +124,11 @@
   }
 
   input[type="range"]:focus::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 0 3px hsla(var(--primary), 0.3);
   }
 
   input[type="range"]:focus::-moz-range-thumb {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 0 3px hsla(var(--primary), 0.3);
   }
 
   /* Disabled state */
@@ -108,10 +137,76 @@
   }
 
   input[type="range"]:disabled::-webkit-slider-thumb {
-    background: #9ca3af;
+    background: hsl(var(--muted-foreground));
   }
 
   input[type="range"]:disabled::-moz-range-thumb {
-    background: #9ca3af;
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  .gradient-heading {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-400 dark:to-indigo-400;
+  }
+
+  .gradient-card {
+    @apply relative overflow-hidden border border-transparent bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-900 before:absolute before:inset-0 before:rounded-xl before:border before:border-gray-200/50 before:bg-gradient-to-br before:from-gray-100/80 before:to-white/20 before:backdrop-blur-xl dark:before:border-gray-800/50 dark:before:from-gray-900/80 dark:before:to-gray-800/20;
+  }
+
+  .discord-card {
+    @apply bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .discord-button {
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors;
+  }
+
+  .discord-sidebar {
+    @apply bg-gray-700 dark:bg-gray-900 text-white;
+  }
+
+  .discord-channel {
+    @apply text-gray-400 hover:text-white hover:bg-gray-600 rounded px-2 py-1 transition-colors;
+  }
+
+  .deal-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .deal-badge-hot {
+    @apply deal-badge bg-gradient-to-r from-red-500 to-orange-500 text-white;
+  }
+
+  .deal-badge-new {
+    @apply deal-badge bg-gradient-to-r from-green-500 to-emerald-500 text-white;
+  }
+
+  .deal-badge-exclusive {
+    @apply deal-badge bg-gradient-to-r from-purple-500 to-indigo-500 text-white;
+  }
+
+  .swipeable-card {
+    @apply relative overflow-hidden touch-manipulation;
+  }
+
+  .countdown-timer {
+    @apply text-xs font-mono bg-black/10 dark:bg-white/10 rounded px-1.5 py-0.5 inline-flex items-center;
+  }
+
+  .stacked-cards {
+    @apply relative;
+  }
+
+  .stacked-card {
+    @apply absolute transition-all duration-300;
+  }
+
+  .stacked-card-1 {
+    @apply -rotate-3 -translate-x-2 scale-[0.97];
+  }
+
+  .stacked-card-2 {
+    @apply rotate-3 translate-x-2 scale-[0.97];
   }
 }

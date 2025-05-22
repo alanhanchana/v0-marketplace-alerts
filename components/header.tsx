@@ -4,48 +4,95 @@ import Link from "next/link"
 import { UserAvatar } from "./user-avatar"
 import { Button } from "./ui/button"
 import { usePathname } from "next/navigation"
+import { ModeToggle } from "./mode-toggle"
+import { Target, Menu } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function Header() {
   const pathname = usePathname()
   const isLoggedIn = !pathname.includes("/login") && !pathname.includes("/signup")
 
   return (
-    <header className="border-b bg-white">
+    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6 text-primary"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="22" y1="12" x2="18" y2="12" />
-            <line x1="6" y1="12" x2="2" y2="12" />
-            <line x1="12" y1="6" x2="12" y2="2" />
-            <line x1="12" y1="22" x2="12" y2="18" />
-            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-            <line x1="7.76" y1="16.24" x2="4.93" y2="19.07" />
-            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-            <line x1="7.76" y1="7.76" x2="4.93" y2="4.93" />
-            <circle cx="12" cy="12" r="4" />
-          </svg>
-          <span className="text-xl font-bold">Snipr</span>
-        </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="mr-2">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel>Navigation</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/" className="w-full cursor-pointer">
+                  Home
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/alerts" className="w-full cursor-pointer">
+                  Watchlist
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="w-full cursor-pointer">
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
+              <Target className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-xl font-bold hidden sm:inline-block">Snipr</span>
+          </Link>
+
+          <nav className="hidden md:flex items-center space-x-1 ml-6">
+            <Link
+              href="/"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                pathname === "/"
+                  ? "bg-primary/10 text-primary dark:bg-primary/20"
+                  : "text-foreground/60 hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              Home
+            </Link>
+            <Link
+              href="/alerts"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                pathname === "/alerts"
+                  ? "bg-primary/10 text-primary dark:bg-primary/20"
+                  : "text-foreground/60 hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              Watchlist
+            </Link>
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ModeToggle />
           {isLoggedIn ? (
             <UserAvatar />
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" size="sm" asChild className="hidden sm:flex">
                 <Link href="/login">Login</Link>
               </Button>
-              <Button asChild>
-                <Link href="/signup">Sign Up</Link>
+              <Button size="sm" asChild className="discord-button">
+                <Link href="/signup">Sign Up Free</Link>
               </Button>
             </div>
           )}

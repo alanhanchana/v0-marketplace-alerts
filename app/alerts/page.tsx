@@ -6,7 +6,7 @@ import { EditAlertDialog } from "@/components/edit-alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabaseClient"
 import { deleteWatchlistItem } from "@/app/actions"
-import { Pencil, Trash2, Search, Bell, Plus, BellOff } from "lucide-react"
+import { Pencil, Trash2, Search, Bell, Plus, BellOff, Zap, Target, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
   AlertDialog,
@@ -18,6 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { SwipeableCard } from "@/components/swipeable-card"
+import { CountdownTimer } from "@/components/countdown-timer"
+import { motion, AnimatePresence } from "framer-motion"
 
 // Function to get city and state from ZIP code
 function getCityStateFromZip(zip: string): { city: string; state: string } {
@@ -261,6 +264,19 @@ export default function AlertsPage() {
     }
   }
 
+  // Handle swipe left (delete)
+  const handleSwipeLeft = (alertId: string) => {
+    const alertToDelete = alerts.find((alert) => alert.id === alertId)
+    if (alertToDelete) {
+      confirmDelete(alertId, alertToDelete.keyword)
+    }
+  }
+
+  // Handle swipe right (view)
+  const handleSwipeRight = (alert: Alert) => {
+    handleViewListings(alert)
+  }
+
   // Format price with dollar sign and commas
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -276,16 +292,16 @@ export default function AlertsPage() {
     switch (marketplace) {
       case "craigslist":
         return marketplaceFilter === marketplace
-          ? "bg-purple-100 text-purple-800 border-b-2 border-purple-500"
-          : "text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+          ? "bg-purple-100 text-purple-800 border-b-2 border-purple-500 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-400"
+          : "text-purple-600 hover:text-purple-800 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-900/20"
       case "facebook":
         return marketplaceFilter === marketplace
-          ? "bg-blue-100 text-blue-800 border-b-2 border-blue-500"
-          : "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+          ? "bg-blue-100 text-blue-800 border-b-2 border-blue-500 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-400"
+          : "text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20"
       case "offerup":
         return marketplaceFilter === marketplace
-          ? "bg-green-100 text-green-800 border-b-2 border-green-500"
-          : "text-green-600 hover:text-green-800 hover:bg-green-50"
+          ? "bg-green-100 text-green-800 border-b-2 border-green-500 dark:bg-green-900/30 dark:text-green-300 dark:border-green-400"
+          : "text-green-600 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20"
       default:
         return ""
     }
@@ -453,8 +469,17 @@ export default function AlertsPage() {
         </div>
       )
     } else {
-      return <Bell className="h-4 w-4 text-green-600" />
+      return <Bell className="h-4 w-4 text-green-600 dark:text-green-400" />
     }
+  }
+
+  // Generate a random future date for countdown demo
+  const getRandomFutureDate = () => {
+    const now = new Date()
+    // Random minutes between 10 and 120
+    const minutesToAdd = Math.floor(Math.random() * 110) + 10
+    now.setMinutes(now.getMinutes() + minutesToAdd)
+    return now
   }
 
   if (loading) {
@@ -462,7 +487,7 @@ export default function AlertsPage() {
       <div className="py-8 max-w-md mx-auto text-center">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p>Loading search terms...</p>
+          <p>Loading your targets...</p>
         </div>
       </div>
     )
@@ -470,12 +495,25 @@ export default function AlertsPage() {
 
   return (
     <div className="py-8 max-w-md mx-auto">
-      <div className="flex justify-between items-center mb-2">
-        <h1 className="text-2xl md:text-3xl font-bold">Saved Search Terms</h1>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex justify-between items-center mb-2"
+      >
+        <h1 className="text-2xl md:text-3xl font-bold flex items-center">
+          <Target className="h-6 w-6 mr-2 text-primary" />
+          <span>Your Targets</span>
+        </h1>
+      </motion.div>
 
       {/* Marketplace filter tabs */}
-      <div className="mb-4 border-b">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+        className="mb-4 border-b"
+      >
         <div className="flex">
           <button
             onClick={() => setMarketplaceFilter("craigslist")}
@@ -508,10 +546,15 @@ export default function AlertsPage() {
             <span className="ml-1 text-xs opacity-75">({searchTermCounts.offerup}/5)</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Add New button */}
-      <div className="flex justify-end mb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+        className="flex justify-end mb-4"
+      >
         {searchTermCounts[marketplaceFilter] < 5 && (
           <Button
             variant="outline"
@@ -520,110 +563,152 @@ export default function AlertsPage() {
             onClick={handleAddNewSearchTerm}
           >
             <Plus className="mr-1 h-3 w-3" />
-            Add New
+            Add Target
           </Button>
         )}
-      </div>
+      </motion.div>
 
-      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-900/30 dark:border-red-900 dark:text-red-300"
+        >
+          <div className="flex items-center">
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            {error}
+          </div>
+        </motion.div>
+      )}
 
       {filteredAlerts.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No search terms found for {marketplaceFilter}.</p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={handleAddNewSearchTerm}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Search Term
-          </Button>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          className="text-center py-8 bg-secondary/50 rounded-lg border border-border"
+        >
+          <div className="flex flex-col items-center">
+            <Target className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-4">No targets set for {marketplaceFilter}.</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={handleAddNewSearchTerm}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Your First Target
+            </Button>
+          </div>
+        </motion.div>
       ) : (
-        <div className="space-y-3">
-          {filteredAlerts.map((alert) => {
-            // Get city and state from ZIP
-            const { city, state } = getCityStateFromZip(alert.zip)
-            const marketplaceType = (alert.marketplace as MarketplaceFilter) || "craigslist"
+        <div className="space-y-6 relative">
+          <AnimatePresence>
+            {filteredAlerts.map((alert, index) => {
+              // Get city and state from ZIP
+              const { city, state } = getCityStateFromZip(alert.zip)
+              const marketplaceType = (alert.marketplace as MarketplaceFilter) || "craigslist"
 
-            return (
-              <Card key={alert.id} className="border shadow-sm">
-                <CardHeader className="p-3 pb-2">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center">
-                      {getMarketplaceIcon(marketplaceType)}
-                      <CardTitle className="text-base font-medium">{alert.keyword}</CardTitle>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-gray-400 hover:text-green-500 hover:bg-green-50"
-                      onClick={() => toggleNotificationMute(alert.id)}
-                    >
-                      {renderNotificationBell(!!alert.muted)}
-                      <span className="sr-only">{alert.muted ? "Enable notifications" : "Mute notifications"}</span>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <div className="flex flex-col gap-1 text-sm">
-                    <div>
-                      {alert.min_price !== undefined && alert.min_price > 0 ? (
-                        <p className="font-medium">
-                          Range: {formatPrice(alert.min_price)} - {formatPrice(alert.max_price)}
-                        </p>
-                      ) : (
-                        <p className="font-medium">
-                          Range: {formatPrice(0)} - {formatPrice(alert.max_price)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center text-xs text-gray-600 mt-1">
-                      {getCategoryIcon(alert.category || "all")}
-                      <span className="capitalize">{alert.category === "all" ? "All Categories" : alert.category}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">
-                        {city}, {state} ({alert.radius || 1} mile radius)
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mt-2">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs flex items-center gap-1 text-gray-500 hover:text-gray-700"
-                          onClick={() => setEditAlert(alert)}
-                        >
-                          <Pencil className="h-3 w-3" />
-                          <span>Edit</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs flex items-center gap-1 text-gray-500 hover:text-red-500 hover:bg-red-50"
-                          onClick={() => confirmDelete(alert.id, alert.keyword)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          <span>Delete</span>
-                        </Button>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs flex items-center gap-1 text-primary hover:text-primary-foreground hover:bg-primary"
-                        onClick={() => handleViewListings(alert)}
-                      >
-                        <Search className="h-3 w-3" />
-                        <span>View</span>
-                        {alert.hasNewListings && alert.newListingsCount && alert.newListingsCount > 0 && (
-                          <span className="ml-1 bg-green-100 text-green-800 text-[10px] px-1 py-0.5 rounded-full">
-                            {alert.newListingsCount} new listings
-                          </span>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+              // Random future date for countdown demo
+              const futureDate = getRandomFutureDate()
+
+              return (
+                <motion.div
+                  key={alert.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -300 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="stacked-cards"
+                >
+                  <SwipeableCard
+                    onSwipeLeft={() => handleSwipeLeft(alert.id)}
+                    onSwipeRight={() => handleSwipeRight(alert)}
+                  >
+                    <Card className="discord-card overflow-visible">
+                      <CardHeader className="p-3 pb-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center">
+                            {getMarketplaceIcon(marketplaceType)}
+                            <CardTitle className="text-base font-medium">{alert.keyword}</CardTitle>
+                            {alert.hasNewListings && alert.newListingsCount && alert.newListingsCount > 0 && (
+                              <div className="deal-badge-hot ml-2">
+                                <Zap className="h-3 w-3 mr-1" />
+                                {alert.newListingsCount} new
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20"
+                            onClick={() => toggleNotificationMute(alert.id)}
+                          >
+                            {renderNotificationBell(!!alert.muted)}
+                            <span className="sr-only">
+                              {alert.muted ? "Enable notifications" : "Mute notifications"}
+                            </span>
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-3 pt-0">
+                        <div className="flex flex-col gap-1 text-sm">
+                          <div className="flex justify-between items-center">
+                            {alert.min_price !== undefined && alert.min_price > 0 ? (
+                              <p className="font-medium">
+                                Range: {formatPrice(alert.min_price)} - {formatPrice(alert.max_price)}
+                              </p>
+                            ) : (
+                              <p className="font-medium">Up to {formatPrice(alert.max_price)}</p>
+                            )}
+                            <CountdownTimer endTime={futureDate} className="ml-2" />
+                          </div>
+                          <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            {getCategoryIcon(alert.category || "all")}
+                            <span className="capitalize">
+                              {alert.category === "all" ? "All Categories" : alert.category}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">
+                              {city}, {state} ({alert.radius || 1} mile radius)
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                onClick={() => setEditAlert(alert)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                                <span>Edit</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs flex items-center gap-1 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                onClick={() => confirmDelete(alert.id, alert.keyword)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                <span>Delete</span>
+                              </Button>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs flex items-center gap-1 text-primary hover:text-primary-foreground hover:bg-primary"
+                              onClick={() => handleViewListings(alert)}
+                            >
+                              <Search className="h-3 w-3" />
+                              <span>View</span>
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </SwipeableCard>
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
         </div>
       )}
 
@@ -643,14 +728,14 @@ export default function AlertsPage() {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Search Term</AlertDialogTitle>
+            <AlertDialogTitle>Delete Target</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteAlertKeyword}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAlert} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction onClick={handleDeleteAlert} className="bg-red-600 hover:bg-red-700 text-white">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

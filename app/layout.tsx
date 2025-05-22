@@ -5,13 +5,14 @@ import "./globals.css"
 import Footer from "@/components/footer"
 import { Header } from "@/components/header"
 import { Toaster } from "@/components/ui/toaster"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Snipr - Find Undervalued Deals",
-  description: "Get alerts for undervalued marketplace deals in your area",
-    generator: 'v0.dev'
+  title: "Snipr - AI-Powered Deal Hunter",
+  description: "Find exclusive marketplace deals before anyone else",
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -20,12 +21,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} min-h-screen flex flex-col`}>
-        <Header />
-        <main className="flex-1 container mx-auto px-4 pb-20">{children}</main>
-        <Footer />
-        <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen flex flex-col antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <Header />
+          <main className="flex-1 container mx-auto px-4 pb-20">{children}</main>
+          <Footer />
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -9,15 +9,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Zap, Target, ArrowRight, Rocket, Bell } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabaseClient"
+import { motion } from "framer-motion"
+import { OnboardingFlow } from "@/components/onboarding-flow"
 
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
 
-// Add the category type and options at the top of the file, after the MarketplaceOption type
-
+// Category options
 type CategoryOption =
   | "all"
   | "electronics"
@@ -31,10 +32,14 @@ type CategoryOption =
   | "jewelry"
   | "books"
 
-// First, add vehicle-specific types and state variables after the CategoryOption type
-
-// Add these types after the CategoryOption type definition
-type VehicleType = "all" | "car" | "truck" | "suv" | "motorcycle" | "rv" | "boat" | "other"
+// Vehicle-specific form fields interface
+interface VehicleFields {
+  year?: string
+  make?: string
+  model?: string
+  minMileage?: string
+  maxMileage?: string
+}
 
 export default function Home() {
   const router = useRouter()
@@ -44,17 +49,15 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [radius, setRadius] = useState(1)
   const [marketplace, setMarketplace] = useState<MarketplaceOption>("craigslist")
-
-  // Add a new state for the selected category after the marketplace state
   const [category, setCategory] = useState<CategoryOption>("all")
-
-  // Add these state variables after the existing state variables
-  const [vehicleType, setVehicleType] = useState<VehicleType>("all")
-  const [minYear, setMinYear] = useState("")
-  const [maxYear, setMaxYear] = useState("")
-  const [make, setMake] = useState("")
-  const [model, setModel] = useState("")
-  const [maxMileage, setMaxMileage] = useState("")
+  const [showVehicleFields, setShowVehicleFields] = useState(false)
+  const [vehicleFields, setVehicleFields] = useState<VehicleFields>({
+    year: "",
+    make: "",
+    model: "",
+    minMileage: "",
+    maxMileage: "",
+  })
 
   const [maxPrice, setMaxPrice] = useState("")
   const [keyword, setKeyword] = useState("")
@@ -69,12 +72,21 @@ export default function Home() {
   const formRef = useRef<HTMLFormElement>(null)
   const submitButtonRef = useRef<HTMLButtonElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
-  // Add minimum price state
   const [minPrice, setMinPrice] = useState("")
   const [minPriceValue, setMinPriceValue] = useState(0)
   const [maxPriceValue, setMaxPriceValue] = useState(0)
   const [priceError, setPriceError] = useState<string | null>(null)
   const [submitClicked, setSubmitClicked] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Check if this is the first visit
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("hasVisitedSnipr")
+    if (!hasVisited) {
+      setShowOnboarding(true)
+      localStorage.setItem("hasVisitedSnipr", "true")
+    }
+  }, [])
 
   // Set marketplace from URL parameter if available
   useEffect(() => {
@@ -128,6 +140,11 @@ export default function Home() {
     fetchSearchTermCounts()
   }, [])
 
+  // Show/hide vehicle fields when category changes
+  useEffect(() => {
+    setShowVehicleFields(category === "vehicles")
+  }, [category])
+
   // Format number with commas
   const formatNumberWithCommas = (value: string) => {
     // Remove any non-digit characters
@@ -175,6 +192,15 @@ export default function Home() {
     }
   }
 
+  // Handle vehicle field changes
+  const handleVehicleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setVehicleFields((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
   // Update slider background on mount and when radius changes
   useEffect(() => {
     updateSliderBackground()
@@ -189,7 +215,7 @@ export default function Home() {
     const value = radius
     const percentage = ((value - min) / (max - min)) * 100
 
-    sliderRef.current.style.background = `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`
+    sliderRef.current.style.background = `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${percentage}%, hsl(var(--secondary)) ${percentage}%, hsl(var(--secondary)) 100%)`
   }
 
   // Prevent accidental double submissions
@@ -248,7 +274,7 @@ export default function Home() {
 
     // Check if we've reached the limit for this marketplace
     if (searchTermCounts[marketplace] >= 5) {
-      setError(`You can only have 5 saved search terms for ${marketplace}. Please delete one to add more.`)
+      setError(`You've hit the 5 term limit for ${marketplace}. Delete one to add more.`)
       setSubmitClicked(false)
       return
     }
@@ -266,19 +292,15 @@ export default function Home() {
     try {
       // Add marketplace to form data
       formData.append("marketplace", marketplace)
-
-      // Add the category to the form data in the handleSubmit function, inside the try block
-      // Add this after the marketplace is appended to formData
       formData.append("category", category)
 
-      // Add vehicle-specific properties if category is vehicles
+      // Include vehicle fields when submitting
       if (category === "vehicles") {
-        formData.append("vehicleType", vehicleType)
-        if (minYear) formData.append("minYear", minYear)
-        if (maxYear) formData.append("maxYear", maxYear)
-        if (make) formData.append("make", make)
-        if (model) formData.append("model", model)
-        if (maxMileage) formData.append("maxMileage", maxMileage)
+        Object.entries(vehicleFields).forEach(([key, value]) => {
+          if (value) {
+            formData.append(key, value)
+          }
+        })
       }
 
       // Replace the formatted max price with the raw number
@@ -298,8 +320,8 @@ export default function Home() {
       if (result.success && result.data) {
         // Show success toast with the keyword and zip
         toast({
-          title: "🔔 Search Term Added",
-          description: `Now watching deals for "${result.data.keyword}" near ${result.data.zip}`,
+          title: "🎯 Target Acquired",
+          description: `Now hunting for "${result.data.keyword}" deals near ${result.data.zip}`,
           duration: 3000,
         })
 
@@ -321,13 +343,13 @@ export default function Home() {
   const getMarketplaceColorClass = (marketplaceOption: MarketplaceOption): string => {
     switch (marketplaceOption) {
       case "craigslist":
-        return "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200"
+        return "bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/50"
       case "facebook":
-        return "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+        return "bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
       case "offerup":
-        return "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+        return "bg-green-100 text-green-800 border-green-300 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800 dark:hover:bg-green-900/50"
       default:
-        return "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200"
+        return "bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700"
     }
   }
 
@@ -385,397 +407,436 @@ export default function Home() {
   }
 
   return (
-    <div className="py-4 max-w-md mx-auto">
-      <Card className="border shadow-md rounded-xl overflow-hidden">
-        <CardHeader className="text-center py-2 px-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardTitle className="text-xl md:text-2xl font-bold">Find Undervalued Deals</CardTitle>
-          <CardDescription className="text-sm mt-1">Get notified when great deals match your criteria</CardDescription>
-        </CardHeader>
-        <CardContent className="p-3">
-          {error && (
-            <Alert variant="destructive" className="mb-3 text-sm">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <>
+      {showOnboarding && <OnboardingFlow onComplete={() => setShowOnboarding(false)} />}
 
-          {priceError && (
-            <Alert className="mb-3 text-sm bg-amber-50 text-amber-800 border-amber-200">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{priceError}</AlertDescription>
-            </Alert>
-          )}
+      <div className="py-8 max-w-md mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 text-center"
+        >
+          <h1 className="text-3xl md:text-4xl font-bold gradient-heading mb-3">Beat Everyone To The Best Deals</h1>
+          <p className="text-muted-foreground max-w-sm mx-auto">
+            Snipr's AI scans marketplaces 24/7 and alerts you the second underpriced deals drop.
+          </p>
+        </motion.div>
 
-          {searchTermCounts[marketplace] >= 5 && (
-            <Alert className="mb-3 text-sm bg-amber-50 text-amber-800 border-amber-200">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You have reached the maximum of 5 saved search terms for {marketplace}. Please delete one to add more.
-              </AlertDescription>
-            </Alert>
-          )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="relative"
+        >
+          {/* Stacked cards effect */}
+          <div className="absolute inset-0 discord-card stacked-card stacked-card-1 -z-10"></div>
+          <div className="absolute inset-0 discord-card stacked-card stacked-card-2 -z-20"></div>
 
-          <form ref={formRef} action={handleSubmit} className="space-y-3" noValidate>
-            {/* Marketplace Toggle */}
-            <div className="flex justify-center mb-1">
-              <div className="inline-flex items-center p-1 bg-gray-100 rounded-lg flex-wrap justify-center">
-                <button
-                  type="button"
-                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
-                    marketplace === "craigslist"
-                      ? "bg-purple-100 text-purple-800 border-purple-300"
-                      : "text-gray-500 hover:text-gray-700 border-transparent"
-                  }`}
-                  onClick={() => setMarketplace("craigslist")}
-                >
-                  {getMarketplaceIcon("craigslist")}
-                  Craigslist
-                  <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.craigslist}/5)</span>
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
-                    marketplace === "facebook"
-                      ? "bg-blue-100 text-blue-800 border-blue-300"
-                      : "text-gray-500 hover:text-gray-700 border-transparent"
-                  }`}
-                  onClick={() => setMarketplace("facebook")}
-                >
-                  {getMarketplaceIcon("facebook")}
-                  FB Marketplace
-                  <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.facebook}/5)</span>
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
-                    marketplace === "offerup"
-                      ? "bg-green-100 text-green-800 border-green-300"
-                      : "text-gray-500 hover:text-gray-700 border-transparent"
-                  }`}
-                  onClick={() => setMarketplace("offerup")}
-                >
-                  {getMarketplaceIcon("offerup")}
-                  OfferUp
-                  <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.offerup}/5)</span>
-                </button>
+          <Card className="discord-card overflow-hidden relative z-0">
+            <CardHeader className="space-y-1 p-4 pb-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-bold flex items-center">
+                  <Target className="h-5 w-5 mr-2 text-primary" />
+                  Set Your Target
+                </CardTitle>
+                <div className="deal-badge-exclusive">
+                  <Rocket className="h-3 w-3 mr-1" />
+                  AI-Powered
+                </div>
               </div>
-            </div>
-            {/* Category selector */}
-            <div className="space-y-1">
-              <Label htmlFor="category" className="text-sm font-medium">
-                Category
-              </Label>
-              <select
-                id="category"
-                name="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as CategoryOption)}
-                className="w-full h-9 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-              >
-                <option value="all">All Categories</option>
-                <option value="electronics">Electronics</option>
-                <option value="furniture">Furniture</option>
-                <option value="clothing">Clothing & Accessories</option>
-                <option value="vehicles">Vehicles</option>
-                <option value="toys">Toys & Games</option>
-                <option value="sports">Sporting Goods</option>
-                <option value="collectibles">Collectibles</option>
-                <option value="tools">Tools & Home Improvement</option>
-                <option value="jewelry">Jewelry & Watches</option>
-                <option value="books">Books & Media</option>
-              </select>
-            </div>
-            {/* Add this code after the category selector div and before the keyword/zip grid: */}
-            {category === "vehicles" && (
-              <div className="space-y-3 border-l-2 border-blue-200 pl-3 mt-2 mb-2">
+              <CardDescription>Tell us what you're hunting for and we'll find it</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              {error && (
+                <Alert variant="destructive" className="mb-3 text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {priceError && (
+                <Alert className="mb-3 text-sm bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{priceError}</AlertDescription>
+                </Alert>
+              )}
+
+              {searchTermCounts[marketplace] >= 5 && (
+                <Alert className="mb-3 text-sm bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You've hit the 5 term limit for {marketplace}. Delete one to add more.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <form ref={formRef} action={handleSubmit} className="space-y-3" noValidate>
+                {/* Marketplace Toggle */}
+                <div className="flex justify-center mb-1">
+                  <div className="inline-flex items-center p-1 bg-secondary rounded-lg flex-wrap justify-center">
+                    <button
+                      type="button"
+                      className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
+                        marketplace === "craigslist"
+                          ? getMarketplaceColorClass("craigslist")
+                          : "text-muted-foreground hover:text-foreground border-transparent"
+                      }`}
+                      onClick={() => setMarketplace("craigslist")}
+                    >
+                      {getMarketplaceIcon("craigslist")}
+                      Craigslist
+                      <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.craigslist}/5)</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
+                        marketplace === "facebook"
+                          ? getMarketplaceColorClass("facebook")
+                          : "text-muted-foreground hover:text-foreground border-transparent"
+                      }`}
+                      onClick={() => setMarketplace("facebook")}
+                    >
+                      {getMarketplaceIcon("facebook")}
+                      FB Marketplace
+                      <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.facebook}/5)</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex items-center px-2 py-1.5 rounded-md text-xs transition-colors m-0.5 border ${
+                        marketplace === "offerup"
+                          ? getMarketplaceColorClass("offerup")
+                          : "text-muted-foreground hover:text-foreground border-transparent"
+                      }`}
+                      onClick={() => setMarketplace("offerup")}
+                    >
+                      {getMarketplaceIcon("offerup")}
+                      OfferUp
+                      <span className="ml-1 text-[10px] opacity-75">({searchTermCounts.offerup}/5)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Category selector */}
                 <div className="space-y-1">
-                  <Label htmlFor="vehicleType" className="text-sm font-medium">
-                    Vehicle Type
+                  <Label htmlFor="category" className="text-sm font-medium">
+                    Category
                   </Label>
                   <select
-                    id="vehicleType"
-                    name="vehicleType"
-                    value={vehicleType}
-                    onChange={(e) => setVehicleType(e.target.value as VehicleType)}
+                    id="category"
+                    name="category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as CategoryOption)}
                     className="w-full h-9 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
                     disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
                   >
-                    <option value="all">All Types</option>
-                    <option value="car">Car</option>
-                    <option value="truck">Truck</option>
-                    <option value="suv">SUV</option>
-                    <option value="motorcycle">Motorcycle</option>
-                    <option value="rv">RV/Camper</option>
-                    <option value="boat">Boat</option>
-                    <option value="other">Other</option>
+                    <option value="all">All Categories</option>
+                    <option value="electronics">Electronics</option>
+                    <option value="furniture">Furniture</option>
+                    <option value="clothing">Clothing & Accessories</option>
+                    <option value="vehicles">Vehicles</option>
+                    <option value="toys">Toys & Games</option>
+                    <option value="sports">Sporting Goods</option>
+                    <option value="collectibles">Collectibles</option>
+                    <option value="tools">Tools & Home Improvement</option>
+                    <option value="jewelry">Jewelry & Watches</option>
+                    <option value="books">Books & Media</option>
                   </select>
                 </div>
 
+                {/* Keyword and ZIP side by side */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="col-span-3 space-y-1">
+                    <Label htmlFor="keyword" className="text-sm font-medium">
+                      What are you hunting for?
+                    </Label>
+                    <Input
+                      id="keyword"
+                      name="keyword"
+                      placeholder="e.g. iPhone 14, PS5, Herman Miller"
+                      className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      required
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                      value={keyword}
+                      onChange={(e) => setKeyword(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <Label htmlFor="zip" className="text-sm font-medium">
+                      ZIP Code
+                    </Label>
+                    <Input
+                      id="zip"
+                      name="zip"
+                      placeholder="ZIP"
+                      className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                      required
+                      pattern="[0-9]{5}"
+                      maxLength={5}
+                      minLength={5}
+                      inputMode="numeric"
+                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                      title="Please enter a valid 5-digit ZIP code"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Price inputs side by side */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="minYear" className="text-sm font-medium">
-                      Min Year
+                    <Label htmlFor="minPrice" className="text-sm font-medium">
+                      Min Price
                     </Label>
-                    <Input
-                      id="minYear"
-                      name="minYear"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="2010"
-                      value={minYear}
-                      onChange={(e) => setMinYear(e.target.value)}
-                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    />
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <Input
+                        id="minPrice"
+                        name="minPrice"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={minPrice}
+                        onChange={handleMinPriceChange}
+                        className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                        disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="maxYear" className="text-sm font-medium">
-                      Max Year
+                    <Label htmlFor="maxPrice" className="text-sm font-medium">
+                      Max Price
                     </Label>
-                    <Input
-                      id="maxYear"
-                      name="maxYear"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="2023"
-                      value={maxYear}
-                      onChange={(e) => setMaxYear(e.target.value)}
-                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="make" className="text-sm font-medium">
-                      Make
-                    </Label>
-                    <Input
-                      id="make"
-                      name="make"
-                      type="text"
-                      placeholder="Toyota, Honda..."
-                      value={make}
-                      onChange={(e) => setMake(e.target.value)}
-                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="model" className="text-sm font-medium">
-                      Model
-                    </Label>
-                    <Input
-                      id="model"
-                      name="model"
-                      type="text"
-                      placeholder="Camry, Civic..."
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="maxMileage" className="text-sm font-medium">
-                    Max Mileage
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="maxMileage"
-                      name="maxMileage"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="100,000"
-                      value={maxMileage}
-                      onChange={(e) =>
-                        setMaxMileage(e.target.value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","))
-                      }
-                      className="h-9 text-sm transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">miles</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Keyword and ZIP side by side */}
-            <div className="grid grid-cols-4 gap-3">
-              <div className="col-span-3 space-y-1">
-                <Label htmlFor="keyword" className="text-sm font-medium">
-                  What are you looking for?
-                </Label>
-                <Input
-                  id="keyword"
-                  name="keyword"
-                  placeholder="e.g. iPhone, PlayStation, Furniture"
-                  className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                  required
-                  disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                />
-              </div>
-              <div className="col-span-1 space-y-1">
-                <Label htmlFor="zip" className="text-sm font-medium">
-                  ZIP Code
-                </Label>
-                <Input
-                  id="zip"
-                  name="zip"
-                  placeholder="ZIP"
-                  className="h-9 text-base transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                  required
-                  pattern="[0-9]{5}"
-                  maxLength={5}
-                  minLength={5}
-                  inputMode="numeric"
-                  disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                  title="Please enter a valid 5-digit ZIP code"
-                  value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value)}
-                />
-              </div>
-            </div>
-            {/* Price inputs side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="minPrice" className="text-sm font-medium">
-                  Minimum Price
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <Input
-                    id="minPrice"
-                    name="minPrice"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={minPrice}
-                    onChange={handleMinPriceChange}
-                    className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="maxPrice" className="text-sm font-medium">
-                  Maximum Price
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <Input
-                    id="maxPrice"
-                    name="maxPrice"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="500"
-                    value={maxPrice}
-                    onChange={handleMaxPriceChange}
-                    className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
-                    required
-                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div>
-                <Label htmlFor="radius" className="text-sm font-medium">
-                  Search Radius
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-grow">
-                  <div>
-                    <input
-                      ref={sliderRef}
-                      type="range"
-                      id="radius-slider"
-                      min="0"
-                      max="100"
-                      value={radius}
-                      onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value))}
-                      className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200"
-                      style={{
-                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${radius}%, #e5e7eb ${radius}%, #e5e7eb 100%)`,
-                      }}
-                      disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 px-1 mt-1">
-                      <span>0</span>
-                      <span>25</span>
-                      <span>50</span>
-                      <span>75</span>
-                      <span>100</span>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <Input
+                        id="maxPrice"
+                        name="maxPrice"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="500"
+                        value={maxPrice}
+                        onChange={handleMaxPriceChange}
+                        className="h-9 text-sm pl-6 transition-all focus-visible:ring-2 focus-visible:ring-offset-1"
+                        required
+                        disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div className="w-16 flex-shrink-0">
-                  <Input
-                    type="text"
-                    id="radius"
-                    name="radius"
-                    value={radius}
-                    onChange={handleRadiusInputChange}
-                    className="h-8 text-center text-sm"
-                    disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
-                    aria-label="Radius in miles"
-                  />
+                {/* Vehicle-specific form fields */}
+                {showVehicleFields && (
+                  <div className="space-y-3 p-3 bg-secondary/50 rounded-md border border-border">
+                    <h3 className="font-medium text-sm">Vehicle Details</h3>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="year" className="text-xs font-medium">
+                          Year
+                        </Label>
+                        <Input
+                          id="year"
+                          name="year"
+                          type="text"
+                          placeholder="e.g. 2018"
+                          value={vehicleFields.year}
+                          onChange={handleVehicleFieldChange}
+                          className="h-8 text-sm"
+                          disabled={isSubmitting || submitClicked}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="make" className="text-xs font-medium">
+                          Make
+                        </Label>
+                        <Input
+                          id="make"
+                          name="make"
+                          type="text"
+                          placeholder="e.g. Toyota"
+                          value={vehicleFields.make}
+                          onChange={handleVehicleFieldChange}
+                          className="h-8 text-sm"
+                          disabled={isSubmitting || submitClicked}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="model" className="text-xs font-medium">
+                          Model
+                        </Label>
+                        <Input
+                          id="model"
+                          name="model"
+                          type="text"
+                          placeholder="e.g. Camry"
+                          value={vehicleFields.model}
+                          onChange={handleVehicleFieldChange}
+                          className="h-8 text-sm"
+                          disabled={isSubmitting || submitClicked}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="minMileage" className="text-xs font-medium">
+                          Min Mileage
+                        </Label>
+                        <Input
+                          id="minMileage"
+                          name="minMileage"
+                          type="text"
+                          placeholder="e.g. 0"
+                          value={vehicleFields.minMileage}
+                          onChange={handleVehicleFieldChange}
+                          className="h-8 text-sm"
+                          disabled={isSubmitting || submitClicked}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="maxMileage" className="text-xs font-medium">
+                          Max Mileage
+                        </Label>
+                        <Input
+                          id="maxMileage"
+                          name="maxMileage"
+                          type="text"
+                          placeholder="e.g. 100,000"
+                          value={vehicleFields.maxMileage}
+                          onChange={handleVehicleFieldChange}
+                          className="h-8 text-sm"
+                          disabled={isSubmitting || submitClicked}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <Label htmlFor="radius" className="text-sm font-medium">
+                      Search Radius
+                    </Label>
+                    <span className="text-xs text-muted-foreground">{radius} miles</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-grow">
+                      <div>
+                        <input
+                          ref={sliderRef}
+                          type="range"
+                          id="radius-slider"
+                          min="0"
+                          max="100"
+                          value={radius}
+                          onChange={(e) => handleRadiusChange(Number.parseInt(e.target.value))}
+                          className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                          disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground px-1 mt-1">
+                          <span>0</span>
+                          <span>25</span>
+                          <span>50</span>
+                          <span>75</span>
+                          <span>100</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-16 flex-shrink-0">
+                      <Input
+                        type="text"
+                        id="radius"
+                        name="radius"
+                        value={radius}
+                        onChange={handleRadiusInputChange}
+                        className="h-8 text-center text-sm"
+                        disabled={isSubmitting || searchTermCounts[marketplace] >= 5 || submitClicked}
+                        aria-label="Radius in miles"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="w-10 flex-shrink-0 text-xs">miles</div>
+                <Button
+                  ref={submitButtonRef}
+                  type="submit"
+                  className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation discord-button"
+                  disabled={
+                    isSubmitting || !isFormValid || searchTermCounts[marketplace] >= 5 || isLoading || submitClicked
+                  }
+                >
+                  {isSubmitting || submitClicked ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg
+                        className="animate-spin h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : isLoading ? (
+                    "Loading..."
+                  ) : searchTermCounts[marketplace] >= 5 ? (
+                    "Maximum Limit Reached"
+                  ) : (
+                    <span className="flex items-center">
+                      <Zap className="mr-2 h-4 w-4" />
+                      Start Hunting
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </span>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mt-8 text-center"
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mr-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm">24/7 AI Scanning</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mr-2">
+                  <Bell className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm">Instant Alerts</span>
               </div>
             </div>
-            <Button
-              ref={submitButtonRef}
-              type="submit"
-              className="w-full h-10 text-base font-medium mt-3 transition-all touch-manipulation"
-              disabled={
-                isSubmitting || !isFormValid || searchTermCounts[marketplace] >= 5 || isLoading || submitClicked
-              }
-            >
-              {isSubmitting || submitClicked ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Processing...
-                </span>
-              ) : isLoading ? (
-                "Loading..."
-              ) : searchTermCounts[marketplace] >= 5 ? (
-                "Maximum Limit Reached"
-              ) : (
-                "Save Search Term"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            <p className="text-xs text-muted-foreground">
+              Snipr finds deals seconds after they're posted, giving you the edge over other buyers.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </>
   )
 }

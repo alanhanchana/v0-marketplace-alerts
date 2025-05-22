@@ -2,29 +2,61 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Bell } from "lucide-react"
+import { Home, Bell, Search, Settings, PlusCircle } from "lucide-react"
 
 export default function Footer() {
   const pathname = usePathname()
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+    <footer className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border">
       <div className="container mx-auto max-w-md">
-        <div className="flex justify-around py-3">
+        <div className="flex justify-around py-2">
           <Link
             href="/"
-            className={`flex flex-col items-center p-2 ${pathname === "/" ? "text-primary" : "text-gray-500"}`}
+            className={`flex flex-col items-center p-2 rounded-md transition-colors ${
+              pathname === "/" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
           >
-            <Home className="h-6 w-6" />
+            <Home className="h-5 w-5" />
             <span className="text-xs mt-1">Home</span>
           </Link>
 
           <Link
             href="/alerts"
-            className={`flex flex-col items-center p-2 ${pathname === "/alerts" ? "text-primary" : "text-gray-500"}`}
+            className={`flex flex-col items-center p-2 rounded-md transition-colors ${
+              pathname === "/alerts" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
           >
-            <Bell className="h-6 w-6" />
+            <Bell className="h-5 w-5" />
             <span className="text-xs mt-1">Watchlist</span>
+          </Link>
+
+          <Link
+            href="/"
+            className="flex flex-col items-center p-2 -mt-5 bg-primary text-primary-foreground rounded-full shadow-lg"
+          >
+            <PlusCircle className="h-8 w-8" />
+            <span className="text-[10px] mt-0.5">Add</span>
+          </Link>
+
+          <Link
+            href="/search"
+            className={`flex flex-col items-center p-2 rounded-md transition-colors ${
+              pathname === "/search" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            <Search className="h-5 w-5" />
+            <span className="text-xs mt-1">Search</span>
+          </Link>
+
+          <Link
+            href="/settings"
+            className={`flex flex-col items-center p-2 rounded-md transition-colors ${
+              pathname === "/settings" ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            <Settings className="h-5 w-5" />
+            <span className="text-xs mt-1">Settings</span>
           </Link>
         </div>
       </div>
