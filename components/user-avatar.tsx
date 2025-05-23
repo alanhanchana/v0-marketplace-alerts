@@ -1,74 +1,58 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useToast } from "@/components/ui/use-toast"
 import { LogOut, Settings, User } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import Link from "next/link"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 
-export function UserAvatar() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const { user, signOut } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
+interface UserAvatarProps {
+  user: SupabaseUser | null
+  signOut: () => Promise<void>
+}
 
-  const email = user?.email || "user@example.com"
-  const initials = email.split("@")[0].slice(0, 2).toUpperCase()
+export function UserAvatar({ user, signOut }: UserAvatarProps) {
+  if (!user) return null
 
-  const handleSignOut = async () => {
-    setIsLoading(true)
-    try {
-      await signOut()
-      toast({
-        title: "Signed out successfully",
-        description: "You have been signed out of your account",
-      })
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to sign out",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+  // Get initials from email
+  const getInitials = () => {
+    if (!user.email) return "U"
+    return user.email.charAt(0).toUpperCase()
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Avatar className="cursor-pointer">
-          <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${email}`} />
-          <AvatarFallback>{initials}</AvatarFallback>
+        <Avatar className="h-8 w-8 cursor-pointer">
+          <AvatarFallback>{getInitials()}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex flex-col space-y-1 leading-none">
-            <p className="font-medium">{email}</p>
-          </div>
-        </div>
+        <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push("/profile")}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
+        <DropdownMenuItem asChild>
+          <Link href="/profile" className="cursor-pointer flex w-full">
+            <User className="mr-2 h-4 w-4" />
+            Profile
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/settings")}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
+        <DropdownMenuItem asChild>
+          <Link href="/settings" className="cursor-pointer flex w-full">
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} disabled={isLoading}>
+        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-red-500 focus:text-red-500">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>{isLoading ? "Signing out..." : "Sign out"}</span>
+          Logout
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

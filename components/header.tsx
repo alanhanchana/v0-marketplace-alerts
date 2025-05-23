@@ -5,7 +5,7 @@ import { UserAvatar } from "./user-avatar"
 import { Button } from "./ui/button"
 import { usePathname } from "next/navigation"
 import { ModeToggle } from "./mode-toggle"
-import { Target, Menu } from "lucide-react"
+import { Target, Menu, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +18,10 @@ import { useAuth } from "@/contexts/auth-context"
 
 export function Header() {
   const pathname = usePathname()
-  const { user, isLoading } = useAuth()
-  const isLoggedIn = !!user
+  const { user, status, signOut } = useAuth()
+
+  const isLoggedIn = status === "authenticated"
+  const isLoading = status === "loading"
   const isAuthPage = pathname.includes("/login") || pathname.includes("/signup")
 
   // Don't show header on auth pages
@@ -60,6 +62,17 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
               )}
+              {isLoggedIn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="cursor-pointer text-red-500 focus:text-red-500"
+                    onClick={() => signOut()}
+                  >
+                    Logout
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -99,9 +112,11 @@ export function Header() {
         <div className="flex items-center gap-3">
           <ModeToggle />
           {isLoading ? (
-            <div className="h-8 w-8 rounded-full bg-secondary animate-pulse"></div>
+            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
           ) : isLoggedIn ? (
-            <UserAvatar />
+            <UserAvatar user={user} signOut={signOut} />
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild className="hidden sm:flex">

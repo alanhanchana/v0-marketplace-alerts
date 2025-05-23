@@ -53,13 +53,14 @@ async function getAuthenticatedUser() {
     }
 
     if (!session) {
-      console.error("No session found")
+      console.error("No session found in server action")
       throw new Error("No active session. Please log in.")
     }
 
+    console.log("Server action found session for user:", session.user.id)
     return session.user
   } catch (error) {
-    console.error("Error getting authenticated user:", error)
+    console.error("Error getting authenticated user in server action:", error)
     throw new Error("Authentication error. Please log in again.")
   }
 }

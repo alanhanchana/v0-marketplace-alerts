@@ -79,15 +79,21 @@ export async function middleware(req: NextRequest) {
     const isAuthenticated = !!session
     const isAuthPage = req.nextUrl.pathname === "/login" || req.nextUrl.pathname === "/signup"
     const isPublicPage = req.nextUrl.pathname === "/"
+    const isAuthCallbackPage = req.nextUrl.pathname.startsWith("/auth/callback")
+
+    // Log the authentication state for debugging
+    console.log(`Middleware: Path=${req.nextUrl.pathname}, Authenticated=${isAuthenticated}`)
 
     // If the user is not authenticated and trying to access a protected route
-    if (!isAuthenticated && !isAuthPage && !isPublicPage) {
+    if (!isAuthenticated && !isAuthPage && !isPublicPage && !isAuthCallbackPage) {
+      console.log("Redirecting to login - not authenticated", req.nextUrl.pathname)
       const redirectUrl = new URL("/login", req.url)
       return NextResponse.redirect(redirectUrl)
     }
 
     // If the user is authenticated and trying to access an auth page
     if (isAuthenticated && isAuthPage) {
+      console.log("Redirecting to alerts - already authenticated", req.nextUrl.pathname)
       const redirectUrl = new URL("/alerts", req.url)
       return NextResponse.redirect(redirectUrl)
     }
