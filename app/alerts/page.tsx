@@ -21,7 +21,7 @@ import { SwipeableCard } from "@/components/swipeable-card"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabaseClient"
+import { getSupabaseClient } from "@/lib/supabase"
 
 // Function to get city and state from ZIP code
 function getCityStateFromZip(zip: string): { city: string; state: string } {
@@ -57,7 +57,6 @@ interface Alert {
 }
 
 type MarketplaceFilter = "craigslist" | "facebook" | "offerup"
-type SortOption = "price-low" | "price-high" | "newest" | "oldest"
 
 export default function AlertsPage() {
   const router = useRouter()
@@ -72,7 +71,6 @@ export default function AlertsPage() {
   const [editAlert, setEditAlert] = useState<Alert | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [marketplaceFilter, setMarketplaceFilter] = useState<MarketplaceFilter>("craigslist")
-  const [sortOption, setSortOption] = useState<SortOption>("newest")
   const deleteInProgressRef = useRef(false)
   const alertDialogOpenRef = useRef(false)
   const [searchTermCounts, setSearchTermCounts] = useState<Record<MarketplaceFilter, number>>({
@@ -84,6 +82,9 @@ export default function AlertsPage() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [fetchAttempts, setFetchAttempts] = useState(0)
+
+  // Get Supabase client
+  const supabase = getSupabaseClient()
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -280,7 +281,7 @@ export default function AlertsPage() {
       const result = await deleteWatchlistItem(idToDelete)
 
       if (!result.success) {
-        // If delete fails, restore the alert and show error
+        // If delete fails, restore the alert
         if (alertToDelete) {
           setAlerts((currentAlerts) => [...currentAlerts, alertToDelete])
         }

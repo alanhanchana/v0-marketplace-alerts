@@ -1,7 +1,6 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
 import type React from "react"
-
 import { useRouter, useSearchParams } from "next/navigation"
 import { createWatchlistItem } from "../actions"
 import { Button } from "@/components/ui/button"
@@ -13,7 +12,7 @@ import { AlertCircle, Zap, Target, ArrowRight } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { motion } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabaseClient"
+import { getSupabaseClient } from "@/lib/supabase"
 
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
@@ -78,6 +77,9 @@ export default function TargetPage() {
   const [maxPriceValue, setMaxPriceValue] = useState(0)
   const [priceError, setPriceError] = useState<string | null>(null)
   const [submitClicked, setSubmitClicked] = useState(false)
+
+  // Get Supabase client
+  const supabase = getSupabaseClient()
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -416,8 +418,6 @@ export default function TargetPage() {
 
   return (
     <>
-      {/* Onboarding moved to home page */}
-
       <div className="py-6 max-w-md mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
