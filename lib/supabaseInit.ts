@@ -24,6 +24,11 @@ export async function initSupabase() {
               keyword TEXT NOT NULL,
               zip TEXT NOT NULL,
               max_price INTEGER NOT NULL,
+              min_price INTEGER DEFAULT 0,
+              radius INTEGER DEFAULT 1,
+              marketplace TEXT DEFAULT 'craigslist',
+              category TEXT DEFAULT 'all',
+              user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
               created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )
           `,

@@ -5,6 +5,8 @@ import "./globals.css"
 import Footer from "@/components/footer"
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/contexts/auth-context"
+import { Header } from "@/components/header"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,9 +25,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen flex flex-col antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <main className="flex-1 container mx-auto px-4 pb-20 pt-4">{children}</main>
-          <Footer />
-          <Toaster />
+          <AuthProvider>
+            <Header />
+            <main className="flex-1 container mx-auto px-4 pb-20 pt-4">{children}</main>
+            <Footer />
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

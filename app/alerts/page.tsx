@@ -1,10 +1,9 @@
 "use client"
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EditAlertDialog } from "@/components/edit-alert-dialog"
 import { useToast } from "@/components/ui/use-toast"
-import { supabase } from "@/lib/supabaseClient"
 import { deleteWatchlistItem } from "@/app/actions"
 import { Pencil, Trash2, Search, Bell, Plus, BellOff, Zap, Target, AlertTriangle } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -21,6 +20,8 @@ import {
 import { SwipeableCard } from "@/components/swipeable-card"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { motion, AnimatePresence } from "framer-motion"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabaseClient"
 
 // Function to get city and state from ZIP code
 function getCityStateFromZip(zip: string): { city: string; state: string } {
@@ -52,6 +53,7 @@ interface Alert {
   muted?: boolean
   hasNewListings?: boolean
   newListingsCount?: number
+  user_id: string
 }
 
 type MarketplaceFilter = "craigslist" | "facebook" | "offerup"
@@ -60,6 +62,7 @@ type SortOption = "price-low" | "price-high" | "newest" | "oldest"
 export default function AlertsPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { user, isLoading: authLoading } = useAuth()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,6 +83,14 @@ export default function AlertsPage() {
   // Add polling interval reference
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [fetchAttempts, setFetchAttempts] = useState(0)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, authLoading, router])
 
   // Handle alert update from edit dialog
   const handleAlertUpdated = useCallback((updatedAlert: Alert) => {
@@ -126,7 +137,10 @@ export default function AlertsPage() {
     })
 
     // Apply sorting - default to newest first
-    result.sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
+    result.sort((a, b) => {
+      if (!a.created_at || !b.created_at) return 0
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
 
     setFilteredAlerts(result)
   }, [alerts, marketplaceFilter])
@@ -151,17 +165,32 @@ export default function AlertsPage() {
 
   // Function to fetch alerts data
   const fetchAlertsData = useCallback(async () => {
+    if (!user) return
+
     try {
-      console.log("Fetching alerts data...")
+      console.log("Fetching alerts data for user:", user.id)
+      setLoading(true)
 
       // Fetch data from Supabase
-      const { data, error } = await supabase.from("watchlist").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("watchlist")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
 
       if (error) {
-        throw error
+        console.error("Error fetching watchlist data:", error)
+        setError("Failed to load your watchlist items. Please try again.")
+        return
       }
 
       console.log("Data fetched:", data)
+
+      if (!data || data.length === 0) {
+        setAlerts([])
+        setLoading(false)
+        return
+      }
 
       // Add random hasNewListings for demo
       const alertsWithNewListings = data.map((alert) => ({
@@ -172,29 +201,45 @@ export default function AlertsPage() {
       }))
 
       setAlerts(alertsWithNewListings)
-      setLoading(false)
+      setError(null)
     } catch (err: any) {
       console.error("Error fetching alerts:", err)
       setError(err.message || "Failed to load search terms")
+    } finally {
       setLoading(false)
+      setFetchAttempts((prev) => prev + 1)
     }
-  }, [])
+  }, [user, supabase])
 
   // Initial data fetch and set up polling
   useEffect(() => {
-    // Initial fetch
-    fetchAlertsData()
+    if (user) {
+      // Initial fetch
+      fetchAlertsData()
 
-    // Set up polling every 10 seconds
-    pollingIntervalRef.current = setInterval(fetchAlertsData, 10000)
+      // Set up polling every 10 seconds
+      pollingIntervalRef.current = setInterval(fetchAlertsData, 10000)
 
-    // Clean up on unmount
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
+      // Clean up on unmount
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+        }
       }
     }
-  }, [fetchAlertsData])
+  }, [fetchAlertsData, user])
+
+  // Retry fetch if initial attempt fails
+  useEffect(() => {
+    if (error && fetchAttempts < 3) {
+      const retryTimer = setTimeout(() => {
+        console.log(`Retry attempt ${fetchAttempts + 1} for fetching alerts data`)
+        fetchAlertsData()
+      }, 2000)
+
+      return () => clearTimeout(retryTimer)
+    }
+  }, [error, fetchAttempts, fetchAlertsData])
 
   // Track when the alert dialog opens/closes
   useEffect(() => {
@@ -244,6 +289,12 @@ export default function AlertsPage() {
           variant: "destructive",
           title: "Error",
           description: result.error || "Failed to delete search term",
+          duration: 3000,
+        })
+      } else {
+        toast({
+          title: "Search Term Deleted",
+          description: alertToDelete ? `"${alertToDelete.keyword}" has been removed` : "Search term removed",
           duration: 3000,
         })
       }
@@ -476,6 +527,17 @@ export default function AlertsPage() {
     return now
   }
 
+  if (authLoading) {
+    return (
+      <div className="py-8 max-w-md mx-auto text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="py-8 max-w-md mx-auto text-center">
@@ -624,11 +686,11 @@ export default function AlertsPage() {
                     onSwipeRight={() => handleSwipeRight(alert)}
                   >
                     <Card className="discord-card overflow-visible">
-                      <CardHeader className="p-3 pb-2">
+                      <CardContent className="p-3">
                         <div className="flex justify-between items-start">
                           <div className="flex items-center">
                             {getMarketplaceIcon(marketplaceType)}
-                            <CardTitle className="text-base font-medium">{alert.keyword}</CardTitle>
+                            <h3 className="text-base font-medium">{alert.keyword}</h3>
                             {alert.hasNewListings && alert.newListingsCount && alert.newListingsCount > 0 && (
                               <div className="deal-badge-hot ml-2">
                                 <Zap className="h-3 w-3 mr-1" />
@@ -648,9 +710,7 @@ export default function AlertsPage() {
                             </span>
                           </Button>
                         </div>
-                      </CardHeader>
-                      <CardContent className="p-3 pt-0">
-                        <div className="flex flex-col gap-1 text-sm">
+                        <div className="flex flex-col gap-1 text-sm mt-2">
                           <div className="flex justify-between items-center">
                             {alert.min_price !== undefined && alert.min_price > 0 ? (
                               <p className="font-medium">

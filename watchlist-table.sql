@@ -5,15 +5,18 @@ CREATE TABLE IF NOT EXISTS watchlist (
   keyword TEXT NOT NULL,
   zip TEXT NOT NULL,
   max_price INTEGER NOT NULL,
+  min_price INTEGER DEFAULT 0,
   radius INTEGER DEFAULT 1,
   marketplace TEXT DEFAULT 'all',
+  category TEXT DEFAULT 'all',
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Optional: Add some sample data
-INSERT INTO watchlist (keyword, zip, max_price, radius, marketplace)
-VALUES 
-  ('iPhone 13', '10001', 500, 5, 'craigslist'),
-  ('PlayStation 5', '10002', 400, 10, 'facebook'),
-  ('Vintage Coffee Table', '10003', 100, 15, 'offerup'),
-  ('Mountain Bike', '10004', 300, 20, 'all');
+-- Create an index on user_id for faster queries
+CREATE INDEX IF NOT EXISTS watchlist_user_id_idx ON watchlist(user_id);
+
+-- Create a unique constraint on user_id, keyword, and marketplace
+ALTER TABLE watchlist 
+ADD CONSTRAINT unique_user_keyword_marketplace 
+UNIQUE (user_id, keyword, marketplace);

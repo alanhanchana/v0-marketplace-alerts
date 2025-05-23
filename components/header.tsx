@@ -14,10 +14,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/contexts/auth-context"
 
 export function Header() {
   const pathname = usePathname()
-  const isLoggedIn = !pathname.includes("/login") && !pathname.includes("/signup")
+  const { user, isLoading } = useAuth()
+  const isLoggedIn = !!user
+  const isAuthPage = pathname.includes("/login") || pathname.includes("/signup")
+
+  // Don't show header on auth pages
+  if (isAuthPage) {
+    return null
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -38,16 +46,20 @@ export function Header() {
                   Home
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/alerts" className="w-full cursor-pointer">
-                  Watchlist
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="w-full cursor-pointer">
-                  Settings
-                </Link>
-              </DropdownMenuItem>
+              {isLoggedIn && (
+                <DropdownMenuItem asChild>
+                  <Link href="/alerts" className="w-full cursor-pointer">
+                    Watchlist
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {isLoggedIn && (
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="w-full cursor-pointer">
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -58,33 +70,37 @@ export function Header() {
             <span className="text-xl font-bold hidden sm:inline-block">FlipSniper</span>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-1 ml-6">
-            <Link
-              href="/"
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                pathname === "/"
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground/60 hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              Home
-            </Link>
-            <Link
-              href="/alerts"
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                pathname === "/alerts"
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground/60 hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              Watchlist
-            </Link>
-          </nav>
+          {isLoggedIn && (
+            <nav className="hidden md:flex items-center space-x-1 ml-6">
+              <Link
+                href="/"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/"
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground/60 hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                Home
+              </Link>
+              <Link
+                href="/alerts"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/alerts"
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground/60 hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                Watchlist
+              </Link>
+            </nav>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
           <ModeToggle />
-          {isLoggedIn ? (
+          {isLoading ? (
+            <div className="h-8 w-8 rounded-full bg-secondary animate-pulse"></div>
+          ) : isLoggedIn ? (
             <UserAvatar />
           ) : (
             <div className="flex items-center gap-2">

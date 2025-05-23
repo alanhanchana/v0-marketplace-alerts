@@ -12,32 +12,25 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/components/ui/use-toast"
 import { LogOut, Settings, User } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
-interface UserAvatarProps {
-  email?: string
-}
-
-export function UserAvatar({ email = "user@example.com" }: UserAvatarProps) {
+export function UserAvatar() {
   const router = useRouter()
   const { toast } = useToast()
+  const { user, signOut } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
+  const email = user?.email || "user@example.com"
   const initials = email.split("@")[0].slice(0, 2).toUpperCase()
 
   const handleSignOut = async () => {
     setIsLoading(true)
     try {
-      // For demo purposes, just redirect
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      router.push("/login")
-
-      // This would be used in production
-      // const result = await signOut()
-      // if (result.success) {
-      //   router.push("/login")
-      // } else {
-      //   throw new Error(result.error || "Failed to sign out")
-      // }
+      await signOut()
+      toast({
+        title: "Signed out successfully",
+        description: "You have been signed out of your account",
+      })
     } catch (error: any) {
       toast({
         variant: "destructive",

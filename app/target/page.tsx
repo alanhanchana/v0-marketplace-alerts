@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Zap, Target, ArrowRight } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { supabase } from "@/lib/supabaseClient"
 import { motion } from "framer-motion"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabaseClient"
 
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
@@ -44,6 +45,7 @@ export default function TargetPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const { user, isLoading: authLoading } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [radius, setRadius] = useState(1)
@@ -77,6 +79,19 @@ export default function TargetPage() {
   const [priceError, setPriceError] = useState<string | null>(null)
   const [submitClicked, setSubmitClicked] = useState(false)
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log("No user found, redirecting to login")
+      router.push("/login")
+      return
+    }
+
+    if (user) {
+      console.log("User authenticated:", user.id)
+    }
+  }, [user, authLoading, router])
+
   // Set marketplace from URL parameter if available
   useEffect(() => {
     const marketplaceParam = searchParams.get("marketplace") as MarketplaceOption
@@ -95,9 +110,11 @@ export default function TargetPage() {
   // Get the count of existing search terms per marketplace
   useEffect(() => {
     async function fetchSearchTermCounts() {
+      if (!user) return
+
       setIsLoading(true)
       try {
-        const { data, error } = await supabase.from("watchlist").select("marketplace")
+        const { data, error } = await supabase.from("watchlist").select("marketplace").eq("user_id", user.id)
 
         if (error) {
           console.error("Error fetching search term counts:", error)
@@ -127,7 +144,7 @@ export default function TargetPage() {
     }
 
     fetchSearchTermCounts()
-  }, [])
+  }, [user, supabase])
 
   // Show/hide vehicle fields when category changes
   useEffect(() => {
@@ -207,24 +224,6 @@ export default function TargetPage() {
     sliderRef.current.style.background = `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${percentage}%, hsl(var(--secondary)) ${percentage}%, hsl(var(--secondary)) 100%)`
   }
 
-  // Prevent accidental double submissions
-  useEffect(() => {
-    const form = formRef.current
-    if (!form) return
-
-    const handleSubmitCapture = (e: Event) => {
-      if (isSubmitting || submitClicked) {
-        e.preventDefault()
-        e.stopPropagation()
-      }
-    }
-
-    form.addEventListener("submit", handleSubmitCapture, true)
-    return () => {
-      form.removeEventListener("submit", handleSubmitCapture, true)
-    }
-  }, [isSubmitting, submitClicked])
-
   // Handle radius changes from either input
   const handleRadiusChange = (value: number) => {
     // Ensure value is between 0 and 100
@@ -253,32 +252,38 @@ export default function TargetPage() {
 
   async function handleSubmit(formData: FormData) {
     // Prevent multiple submissions
-    if (isSubmitting || submitClicked) {
+    if (isSubmitting) {
       console.log("Submission already in progress, ignoring")
       return
     }
 
     // Set submit clicked to true to prevent multiple clicks
     setSubmitClicked(true)
-
-    // Check if we've reached the limit for this marketplace
-    if (searchTermCounts[marketplace] >= 5) {
-      setError(`You've hit the 5 term limit for ${marketplace}. Delete one to add more.`)
-      setSubmitClicked(false)
-      return
-    }
-
-    // Validate min/max price relationship
-    if (priceError) {
-      setError(priceError)
-      setSubmitClicked(false)
-      return
-    }
-
     setIsSubmitting(true)
     setError(null)
 
     try {
+      // Check if we've reached the limit for this marketplace
+      if (searchTermCounts[marketplace] >= 5) {
+        setError(`You've hit the 5 term limit for ${marketplace}. Delete one to add more.`)
+        setIsSubmitting(false)
+        setSubmitClicked(false)
+        return
+      }
+
+      // Validate min/max price relationship
+      if (priceError) {
+        setError(priceError)
+        setIsSubmitting(false)
+        setSubmitClicked(false)
+        return
+      }
+
+      // Add user ID to form data as a fallback mechanism
+      if (user) {
+        formData.append("user_id", user.id)
+      }
+
       // Add marketplace to form data
       formData.append("marketplace", marketplace)
       formData.append("category", category)
@@ -304,6 +309,7 @@ export default function TargetPage() {
         formData.append("minPrice", rawMinPrice)
       }
 
+      console.log("Submitting form data with user ID:", user?.id)
       const result = await createWatchlistItem(formData)
 
       if (result.success && result.data) {
@@ -317,11 +323,13 @@ export default function TargetPage() {
         // Immediately redirect to alerts page
         router.push("/alerts")
       } else {
+        console.error("Server action failed:", result.error)
         setError(result.error || "Something went wrong")
         setIsSubmitting(false)
         setSubmitClicked(false)
       }
     } catch (err: any) {
+      console.error("Client error:", err)
       setError(err.message || "An unexpected error occurred")
       setIsSubmitting(false)
       setSubmitClicked(false)
@@ -393,6 +401,17 @@ export default function TargetPage() {
           </svg>
         )
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="py-8 max-w-md mx-auto text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

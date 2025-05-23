@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/contexts/auth-context"
 
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
@@ -40,6 +41,7 @@ interface EditAlertDialogProps {
 
 export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: EditAlertDialogProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [radius, setRadius] = useState(alert.radius || 1)
@@ -232,6 +234,11 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
       formData.append("id", alert.id)
       formData.append("keyword", formValues.keyword)
 
+      // Add user ID if available
+      if (user) {
+        formData.append("user_id", user.id)
+      }
+
       // Remove commas from prices before submitting
       if (formValues.minPrice) {
         const rawMinPrice = formValues.minPrice.replace(/,/g, "")
@@ -273,10 +280,10 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
         })
       } else {
         setError(result.error || "Failed to update search term")
+        setIsSubmitting(false)
       }
     } catch (error: any) {
       setError(error.message || "An error occurred while updating the alert.")
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -307,6 +314,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
                 value={formValues.keyword}
                 onChange={handleInputChange}
                 className="col-span-3"
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -333,6 +341,7 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
                 value={formValues.maxPrice}
                 onChange={handlePriceChange}
                 className="col-span-3"
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -340,12 +349,16 @@ export function EditAlertDialog({ alert, open, onOpenChange, onAlertUpdated }: E
                 Zip Code
               </Label>
               <Input
-                type="number"
+                type="text"
                 id="zip"
                 name="zip"
                 value={formValues.zip}
                 onChange={handleInputChange}
                 className="col-span-3"
+                required
+                pattern="[0-9]{5}"
+                maxLength={5}
+                minLength={5}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

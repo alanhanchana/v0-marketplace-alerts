@@ -1,27 +1,111 @@
 "use server"
 
-import { supabase } from "@/lib/supabaseClient"
-import { initSupabase } from "@/lib/supabaseInit"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
+import type { Database } from "@/lib/database.types"
+
+// Create a server-side Supabase client
+async function createServerSupabaseClient() {
+  const cookieStore = cookies()
+
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          try {
+            cookieStore.set(name, value, options)
+          } catch (error) {
+            console.error(`Error setting cookie ${name}:`, error)
+          }
+        },
+        remove(name: string, options: any) {
+          try {
+            cookieStore.set(name, "", { ...options, maxAge: 0 })
+          } catch (error) {
+            console.error(`Error removing cookie ${name}:`, error)
+          }
+        },
+      },
+    },
+  )
+}
+
+// Get the authenticated user from the session
+async function getAuthenticatedUser() {
+  try {
+    const supabase = await createServerSupabaseClient()
+
+    // Get the session
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.error("Session error:", sessionError)
+      throw new Error("Authentication failed. Please log in again.")
+    }
+
+    if (!session) {
+      console.error("No session found")
+      throw new Error("No active session. Please log in.")
+    }
+
+    return session.user
+  } catch (error) {
+    console.error("Error getting authenticated user:", error)
+    throw new Error("Authentication error. Please log in again.")
+  }
+}
 
 export async function createWatchlistItem(formData: FormData) {
   try {
-    // Try to ensure the table exists
-    try {
-      await initSupabase()
-    } catch (err) {
-      console.error("Table initialization error:", err)
-      // Continue anyway, as the table might already exist or be created manually
+    console.log("=== CREATE WATCHLIST ITEM START ===")
+
+    // Get the authenticated user
+    const user = await getAuthenticatedUser()
+    if (!user || !user.id) {
+      throw new Error("User authentication error: User not found")
     }
 
+    const userId = user.id
+    console.log("Authenticated user ID:", userId)
+
+    // Create a Supabase client
+    const supabase = await createServerSupabaseClient()
+
+    // Parse form data
     const keyword = formData.get("keyword") as string
-    const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
-    const minPrice = formData.get("minPrice") ? Number.parseInt(formData.get("minPrice") as string) : 0
+    const maxPriceStr = formData.get("maxPrice") as string
+    const minPriceStr = (formData.get("minPrice") as string) || "0"
     const zip = formData.get("zip") as string
-    const radius = Number.parseInt(formData.get("radius") as string) || 1
+    const radiusStr = (formData.get("radius") as string) || "1"
     const marketplace = (formData.get("marketplace") as string) || "craigslist"
     const category = (formData.get("category") as string) || "all"
 
+    // Convert to proper types
+    const maxPrice = Number.parseInt(maxPriceStr.replace(/,/g, ""), 10)
+    const minPrice = Number.parseInt(minPriceStr.replace(/,/g, ""), 10) || 0
+    const radius = Number.parseInt(radiusStr, 10) || 1
+
+    console.log("Form data parsed:", {
+      keyword,
+      maxPrice,
+      minPrice,
+      zip,
+      radius,
+      marketplace,
+      category,
+      userId,
+    })
+
+    // Validation
     if (!keyword || isNaN(maxPrice) || !zip) {
       return {
         success: false,
@@ -29,7 +113,6 @@ export async function createWatchlistItem(formData: FormData) {
       }
     }
 
-    // Validate zip code format
     if (!/^\d{5}$/.test(zip)) {
       return {
         success: false,
@@ -37,7 +120,6 @@ export async function createWatchlistItem(formData: FormData) {
       }
     }
 
-    // Validate max price
     if (maxPrice <= 0) {
       return {
         success: false,
@@ -45,20 +127,19 @@ export async function createWatchlistItem(formData: FormData) {
       }
     }
 
-    console.log("Creating watchlist item:", { keyword, maxPrice, zip, radius, marketplace })
-
-    // Check if a search term with the same keyword and marketplace already exists
+    // Check for duplicates
     const { data: existingItems, error: checkError } = await supabase
       .from("watchlist")
       .select("id")
       .eq("keyword", keyword)
       .eq("marketplace", marketplace)
+      .eq("user_id", userId)
 
     if (checkError) {
-      console.error("Error checking for duplicate search terms:", checkError)
+      console.error("Error checking for duplicates:", checkError)
       return {
         success: false,
-        error: "Failed to check for duplicate search terms",
+        error: "Failed to check for duplicate search terms: " + checkError.message,
       }
     }
 
@@ -69,62 +150,57 @@ export async function createWatchlistItem(formData: FormData) {
       }
     }
 
-    // Check if we've reached the limit of 5 search terms
+    // Check count limit
     const { count, error: countError } = await supabase
       .from("watchlist")
       .select("*", { count: "exact", head: true })
       .eq("marketplace", marketplace)
+      .eq("user_id", userId)
 
     if (countError) {
-      console.error("Error checking search term count:", countError)
+      console.error("Error checking count:", countError)
       return {
         success: false,
-        error: "Failed to check search term count",
+        error: "Failed to check search term count: " + countError.message,
       }
     }
 
     if (count && count >= 5) {
       return {
         success: false,
-        error: "You can only have 5 saved search terms. Please delete one to add more.",
+        error: "You can only have 5 saved search terms per marketplace. Please delete one to add more.",
       }
     }
 
-    // Try to insert the data
-    const { error } = await supabase.from("watchlist").insert([
-      {
-        keyword,
-        max_price: maxPrice,
-        min_price: minPrice,
-        zip,
-        radius,
-        marketplace,
-        category,
-      },
-    ])
+    // Insert the new item
+    console.log("Inserting watchlist item for user:", userId)
+    const { data, error } = await supabase
+      .from("watchlist")
+      .insert([
+        {
+          keyword,
+          max_price: maxPrice,
+          min_price: minPrice,
+          zip,
+          radius,
+          marketplace,
+          category,
+          user_id: userId,
+        },
+      ])
+      .select()
 
     if (error) {
-      console.error("Supabase insert error:", error)
-
-      // If the error is about the table not existing, we'll inform the user
-      if (error.message.includes("does not exist")) {
-        return {
-          success: false,
-          error:
-            "The watchlist table doesn't exist. Please create it manually in the Supabase dashboard or contact support.",
-        }
-      } else {
-        return {
-          success: false,
-          error: error.message || "Failed to create watchlist item",
-        }
+      console.error("Insert error:", error)
+      return {
+        success: false,
+        error: "Failed to create watchlist item: " + error.message,
       }
     }
 
-    // Revalidate the alerts page to show the new data
+    console.log("Watchlist item created successfully:", data)
     revalidatePath("/alerts")
 
-    // Return success with the form data for the toast message
     return {
       success: true,
       data: {
@@ -133,61 +209,7 @@ export async function createWatchlistItem(formData: FormData) {
       },
     }
   } catch (error: any) {
-    console.error("Error inserting watchlist item:", error)
-    return {
-      success: false,
-      error: error.message || "An unexpected error occurred",
-    }
-  }
-}
-
-export async function deleteWatchlistItem(id: string) {
-  try {
-    const { error } = await supabase.from("watchlist").delete().eq("id", id)
-
-    if (error) {
-      console.error("Error deleting watchlist item:", error)
-      return {
-        success: false,
-        error: error.message || "Failed to delete watchlist item",
-      }
-    }
-
-    // Revalidate the alerts page to show the updated data
-    revalidatePath("/alerts")
-
-    return {
-      success: true,
-    }
-  } catch (error: any) {
-    console.error("Error deleting watchlist item:", error)
-    return {
-      success: false,
-      error: error.message || "An unexpected error occurred",
-    }
-  }
-}
-
-export async function deleteAllWatchlistItems() {
-  try {
-    const { error } = await supabase.from("watchlist").delete().neq("id", "placeholder")
-
-    if (error) {
-      console.error("Error deleting all watchlist items:", error)
-      return {
-        success: false,
-        error: error.message || "Failed to delete all watchlist items",
-      }
-    }
-
-    // Revalidate the alerts page to show the updated data
-    revalidatePath("/alerts")
-
-    return {
-      success: true,
-    }
-  } catch (error: any) {
-    console.error("Error deleting all watchlist items:", error)
+    console.error("=== CREATE WATCHLIST ITEM ERROR ===", error)
     return {
       success: false,
       error: error.message || "An unexpected error occurred",
@@ -197,17 +219,47 @@ export async function deleteAllWatchlistItems() {
 
 export async function updateWatchlistItem(formData: FormData) {
   try {
+    console.log("=== UPDATE WATCHLIST ITEM START ===")
+
+    // Get the authenticated user
+    const user = await getAuthenticatedUser()
+    if (!user || !user.id) {
+      throw new Error("User authentication error: User not found")
+    }
+
+    const userId = user.id
+    console.log("Authenticated user ID:", userId)
+
+    // Create a Supabase client
+    const supabase = await createServerSupabaseClient()
+
     const id = formData.get("id") as string
     const keyword = formData.get("keyword") as string
-    const maxPrice = Number.parseInt(formData.get("maxPrice") as string)
-    const minPrice = formData.get("minPrice") ? Number.parseInt(formData.get("minPrice") as string) : 0
+    const maxPriceStr = formData.get("maxPrice") as string
+    const minPriceStr = (formData.get("minPrice") as string) || "0"
     const zip = formData.get("zip") as string
-    const radius = Number.parseInt(formData.get("radius") as string) || 1
+    const radiusStr = (formData.get("radius") as string) || "1"
     const marketplace = (formData.get("marketplace") as string) || "craigslist"
     const category = (formData.get("category") as string) || "all"
 
-    console.log("Updating watchlist item:", { id, keyword, maxPrice, zip, radius, marketplace })
+    // Convert to proper types
+    const maxPrice = Number.parseInt(maxPriceStr.replace(/,/g, ""), 10)
+    const minPrice = Number.parseInt(minPriceStr.replace(/,/g, ""), 10) || 0
+    const radius = Number.parseInt(radiusStr, 10) || 1
 
+    console.log("Updating watchlist item:", {
+      id,
+      keyword,
+      maxPrice,
+      minPrice,
+      zip,
+      radius,
+      marketplace,
+      category,
+      userId,
+    })
+
+    // Validation
     if (!id || !keyword || isNaN(maxPrice) || !zip) {
       return {
         success: false,
@@ -215,7 +267,6 @@ export async function updateWatchlistItem(formData: FormData) {
       }
     }
 
-    // Validate zip code format
     if (!/^\d{5}$/.test(zip)) {
       return {
         success: false,
@@ -223,7 +274,6 @@ export async function updateWatchlistItem(formData: FormData) {
       }
     }
 
-    // Validate max price
     if (maxPrice <= 0) {
       return {
         success: false,
@@ -231,16 +281,32 @@ export async function updateWatchlistItem(formData: FormData) {
       }
     }
 
-    // Check if a search term with the same keyword and marketplace already exists (excluding this one)
+    // Check if item exists and belongs to user
+    const { data: itemData, error: itemError } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single()
+
+    if (itemError || !itemData) {
+      return {
+        success: false,
+        error: "You do not have permission to update this item or it doesn't exist",
+      }
+    }
+
+    // Check for duplicates (excluding current item)
     const { data: existingItems, error: checkError } = await supabase
       .from("watchlist")
       .select("id")
       .eq("keyword", keyword)
       .eq("marketplace", marketplace)
+      .eq("user_id", userId)
       .neq("id", id)
 
     if (checkError) {
-      console.error("Error checking for duplicate search terms:", checkError)
+      console.error("Error checking for duplicates:", checkError)
       return {
         success: false,
         error: "Failed to check for duplicate search terms",
@@ -254,7 +320,7 @@ export async function updateWatchlistItem(formData: FormData) {
       }
     }
 
-    // Update the watchlist item
+    // Update the item
     const { error } = await supabase
       .from("watchlist")
       .update({
@@ -267,17 +333,18 @@ export async function updateWatchlistItem(formData: FormData) {
         category,
       })
       .eq("id", id)
+      .eq("user_id", userId)
 
     if (error) {
       console.error("Error updating watchlist item:", error)
       return {
         success: false,
-        error: error.message || "Failed to update watchlist item",
+        error: "Failed to update watchlist item: " + error.message,
       }
     }
 
-    // Revalidate the alerts page to show the updated data
     revalidatePath("/alerts")
+    console.log("=== UPDATE WATCHLIST ITEM SUCCESS ===")
 
     return {
       success: true,
@@ -285,13 +352,72 @@ export async function updateWatchlistItem(formData: FormData) {
         id,
         keyword,
         max_price: maxPrice,
+        min_price: minPrice,
         zip,
         radius,
         marketplace,
+        category,
       },
     }
   } catch (error: any) {
-    console.error("Error updating watchlist item:", error)
+    console.error("=== UPDATE WATCHLIST ITEM ERROR ===", error)
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred",
+    }
+  }
+}
+
+export async function deleteWatchlistItem(id: string) {
+  try {
+    console.log("=== DELETE WATCHLIST ITEM START ===", id)
+
+    // Get the authenticated user
+    const user = await getAuthenticatedUser()
+    if (!user || !user.id) {
+      throw new Error("User authentication error: User not found")
+    }
+
+    const userId = user.id
+    console.log("Authenticated user ID:", userId)
+
+    // Create a Supabase client
+    const supabase = await createServerSupabaseClient()
+
+    // Check if item exists and belongs to user
+    const { data: itemData, error: itemError } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single()
+
+    if (itemError || !itemData) {
+      return {
+        success: false,
+        error: "You do not have permission to delete this item or it doesn't exist",
+      }
+    }
+
+    // Delete the item
+    const { error } = await supabase.from("watchlist").delete().eq("id", id).eq("user_id", userId)
+
+    if (error) {
+      console.error("Error deleting watchlist item:", error)
+      return {
+        success: false,
+        error: "Failed to delete watchlist item: " + error.message,
+      }
+    }
+
+    revalidatePath("/alerts")
+    console.log("=== DELETE WATCHLIST ITEM SUCCESS ===")
+
+    return {
+      success: true,
+    }
+  } catch (error: any) {
+    console.error("=== DELETE WATCHLIST ITEM ERROR ===", error)
     return {
       success: false,
       error: error.message || "An unexpected error occurred",

@@ -19,6 +19,7 @@ import {
 import { KeywordFilter } from "@/components/keyword-filter"
 import { DealCard } from "@/components/deal-card"
 import { motion } from "framer-motion"
+import { useUser } from "@/contexts/user-context"
 
 // Mock listing data generator
 const generateMockListings = (keyword: string, maxPrice: number, marketplace: string, count = 15) => {
@@ -107,6 +108,7 @@ const generateMockListings = (keyword: string, maxPrice: number, marketplace: st
 export default function ListingsPage() {
   const params = useParams()
   const router = useRouter()
+  const { user, loading: userLoading } = useUser()
   const [alert, setAlert] = useState<any>(null)
   const [allListings, setAllListings] = useState<any[]>([])
   const [filteredListings, setFilteredListings] = useState<any[]>([])
@@ -119,17 +121,35 @@ export default function ListingsPage() {
     distance: 50,
   })
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!userLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, userLoading, router])
+
   useEffect(() => {
     async function fetchAlertAndListings() {
       try {
+        if (!user) return
+
         setLoading(true)
         const alertId = params.id as string
 
         // Fetch the alert details
-        const { data, error } = await supabase.from("watchlist").select("*").eq("id", alertId).single()
+        const { data, error } = await supabase
+          .from("watchlist")
+          .select("*")
+          .eq("id", alertId)
+          .eq("user_id", user.id) // Only fetch if it belongs to the current user
+          .single()
 
         if (error) {
           throw error
+        }
+
+        if (!data) {
+          throw new Error("Alert not found or you don't have permission to view it")
         }
 
         setAlert(data)
@@ -157,7 +177,7 @@ export default function ListingsPage() {
     }
 
     fetchAlertAndListings()
-  }, [params.id])
+  }, [params.id, user, userLoading])
 
   // Apply filters
   useEffect(() => {
@@ -204,7 +224,7 @@ export default function ListingsPage() {
     setFilterOptions(newFilters)
   }
 
-  if (loading) {
+  if (userLoading || loading) {
     return (
       <div className="py-8 max-w-md mx-auto">
         <div className="flex items-center mb-6">
