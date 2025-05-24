@@ -7,7 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     // Create a Supabase client with the cookies
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient<Database>({
+      cookies: () => cookieStore,
+    })
 
     // Sign out
     const { error } = await supabase.auth.signOut()
@@ -17,8 +19,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
+    console.log("Server logout successful")
+
     // Return success
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+    })
   } catch (error) {
     console.error("Unexpected error during server logout:", error)
     return NextResponse.json({ success: false, error: "An unexpected error occurred" }, { status: 500 })

@@ -12,7 +12,7 @@ import { AlertCircle, Zap, Target, ArrowRight } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { motion } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
-import { getSupabaseClient } from "@/lib/supabase"
+import { getSupabaseBrowser } from "@/lib/supabase-browser"
 
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
@@ -44,7 +44,7 @@ export default function TargetPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, status } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [radius, setRadius] = useState(1)
@@ -79,20 +79,20 @@ export default function TargetPage() {
   const [submitClicked, setSubmitClicked] = useState(false)
 
   // Get Supabase client
-  const supabase = getSupabaseClient()
+  const supabase = getSupabaseBrowser()
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (status === "unauthenticated") {
       console.log("No user found, redirecting to login")
       router.push("/login")
       return
     }
 
-    if (user) {
+    if (status === "authenticated" && user) {
       console.log("User authenticated:", user.id)
     }
-  }, [user, authLoading, router])
+  }, [user, status, router])
 
   // Set marketplace from URL parameter if available
   useEffect(() => {
@@ -259,6 +259,13 @@ export default function TargetPage() {
       return
     }
 
+    // Check if user is authenticated
+    if (status !== "authenticated" || !user) {
+      setError("You must be logged in to create a watchlist item. Please log in and try again.")
+      router.push("/login")
+      return
+    }
+
     // Set submit clicked to true to prevent multiple clicks
     setSubmitClicked(true)
     setIsSubmitting(true)
@@ -282,9 +289,7 @@ export default function TargetPage() {
       }
 
       // Add user ID to form data as a fallback mechanism
-      if (user) {
-        formData.append("user_id", user.id)
-      }
+      formData.append("user_id", user.id)
 
       // Add marketplace to form data
       formData.append("marketplace", marketplace)
@@ -311,7 +316,7 @@ export default function TargetPage() {
         formData.append("minPrice", rawMinPrice)
       }
 
-      console.log("Submitting form data with user ID:", user?.id)
+      console.log("Submitting form data with user ID:", user.id)
       const result = await createWatchlistItem(formData)
 
       if (result.success && result.data) {
@@ -326,7 +331,19 @@ export default function TargetPage() {
         router.push("/alerts")
       } else {
         console.error("Server action failed:", result.error)
-        setError(result.error || "Something went wrong")
+
+        // Check if it's an authentication error
+        if (
+          result.error?.includes("Authentication") ||
+          result.error?.includes("session") ||
+          result.error?.includes("log in")
+        ) {
+          setError("Your session has expired. Please log in again.")
+          router.push("/login")
+        } else {
+          setError(result.error || "Something went wrong")
+        }
+
         setIsSubmitting(false)
         setSubmitClicked(false)
       }
@@ -405,12 +422,23 @@ export default function TargetPage() {
     }
   }
 
-  if (authLoading) {
+  if (status === "loading") {
     return (
       <div className="py-8 max-w-md mx-auto text-center">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="py-8 max-w-md mx-auto text-center">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <p>Please log in to access this page.</p>
+          <Button onClick={() => router.push("/login")}>Go to Login</Button>
         </div>
       </div>
     )

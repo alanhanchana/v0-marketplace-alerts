@@ -4,9 +4,8 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { User, Session } from "@supabase/supabase-js"
-import type { Database } from "@/lib/database.types"
+import { getSupabaseBrowser } from "@/lib/supabase-browser"
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated"
 
@@ -29,14 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Create a Supabase client
-  const supabase = createClientComponentClient<Database>({
-    options: {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    },
-  })
+  const supabase = getSupabaseBrowser()
 
   // Initialize auth state
   const initAuth = useCallback(async () => {
@@ -136,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // Important for cookies
       })
 
       const data = await response.json()
@@ -148,10 +141,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("Sign in successful via server route:", data.user?.id)
 
-      // Refresh the session to ensure client has the latest session
-      await supabase.auth.refreshSession()
+      // Wait a moment for cookies to be set, then get the session
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
-      // Auth state change listener will update the state
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError) {
+          console.error("Error getting session after login:", sessionError)
+          // Don't fail the login, the auth state change listener will handle it
+        } else if (sessionData.session) {
+          console.log("Session retrieved after login:", sessionData.session.user.id)
+          setUser(sessionData.session.user)
+          setSession(sessionData.session)
+          setStatus("authenticated")
+        } else {
+          console.log("No session found after login, waiting for auth state change...")
+          // The auth state change listener will handle the session update
+        }
+      } catch (sessionError) {
+        console.error("Unexpected error getting session after login:", sessionError)
+        // Don't fail the login, the auth state change listener will handle it
+      }
+
       return { success: true }
     } catch (error: any) {
       console.error("Unexpected error during sign in:", error)
@@ -209,29 +221,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Signing out via server route...")
       setStatus("loading")
 
+      // Clear client state first
+      setUser(null)
+      setSession(null)
+
       // Call the server-side logout route
       const response = await fetch("/api/auth/logout", {
         method: "POST",
+        credentials: "include", // Important for cookies
       })
 
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        console.error("Sign out error:", data.error)
-        // Force a hard reload to clear any cached state
-        window.location.href = "/login"
-        return
+      if (!response.ok) {
+        console.error("Sign out error:", response.statusText)
       }
 
-      // Clear client state
-      setUser(null)
-      setSession(null)
       setStatus("unauthenticated")
 
       // Redirect to login page
       router.push("/login")
     } catch (error) {
       console.error("Unexpected error during sign out:", error)
+      setStatus("unauthenticated")
       // Force a hard reload to clear any cached state
       window.location.href = "/login"
     }

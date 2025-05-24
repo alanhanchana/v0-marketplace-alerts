@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,15 +11,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export function LoginForm() {
-  const { signIn, status } = useAuth()
+  const { signIn, status, user } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter()
 
   const isLoading = status === "loading" || isSubmitting
+
+  // If user is already authenticated, redirect to alerts
+  useEffect(() => {
+    if (user && status === "authenticated") {
+      console.log("User already authenticated, redirecting to alerts")
+      router.push("/alerts")
+    }
+  }, [user, status, router])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -33,6 +43,9 @@ export function LoginForm() {
       if (!result.success) {
         console.error("Login failed:", result.error)
         setError(result.error || "Invalid email or password")
+      } else {
+        console.log("Login successful, waiting for redirect...")
+        // The auth context will handle the redirect
       }
     } catch (err: any) {
       console.error("Unexpected error during login:", err)
@@ -40,6 +53,20 @@ export function LoginForm() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Don't render the form if user is already authenticated
+  if (user && status === "authenticated") {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="flex items-center justify-center p-6">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
+            <p>Redirecting to alerts...</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

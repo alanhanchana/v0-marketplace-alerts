@@ -14,7 +14,9 @@ export async function POST(request: NextRequest) {
 
     // Create a Supabase client with the cookies
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient<Database>({
+      cookies: () => cookieStore,
+    })
 
     // Sign in with email and password
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -26,6 +28,13 @@ export async function POST(request: NextRequest) {
       console.error("Server login error:", error)
       return NextResponse.json({ success: false, error: error.message }, { status: 401 })
     }
+
+    if (!data.session || !data.user) {
+      console.error("No session or user returned from login")
+      return NextResponse.json({ success: false, error: "Login failed - no session created" }, { status: 401 })
+    }
+
+    console.log("Server login successful for user:", data.user.id)
 
     // Return the session and user data
     return NextResponse.json({

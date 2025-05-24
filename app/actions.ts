@@ -2,38 +2,16 @@
 
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
-import { createServerClient } from "@supabase/ssr"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/database.types"
 
-// Create a server-side Supabase client
+// Create a server-side Supabase client that can read the auth cookies
 async function createServerSupabaseClient() {
   const cookieStore = cookies()
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set(name, value, options)
-          } catch (error) {
-            console.error(`Error setting cookie ${name}:`, error)
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set(name, "", { ...options, maxAge: 0 })
-          } catch (error) {
-            console.error(`Error removing cookie ${name}:`, error)
-          }
-        },
-      },
-    },
-  )
+  return createRouteHandlerClient<Database>({
+    cookies: () => cookieStore,
+  })
 }
 
 // Get the authenticated user from the session
@@ -47,13 +25,31 @@ async function getAuthenticatedUser() {
       error: sessionError,
     } = await supabase.auth.getSession()
 
+    console.log("Server action - checking session:", {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      error: sessionError?.message,
+    })
+
     if (sessionError) {
-      console.error("Session error:", sessionError)
+      console.error("Session error in server action:", sessionError)
       throw new Error("Authentication failed. Please log in again.")
     }
 
     if (!session) {
       console.error("No session found in server action")
+
+      // Try to get the user from the cookies directly as a fallback
+      const cookieStore = cookies()
+      const authCookies = cookieStore
+        .getAll()
+        .filter((cookie) => cookie.name.includes("supabase") || cookie.name.includes("auth"))
+
+      console.log(
+        "Available auth cookies:",
+        authCookies.map((c) => c.name),
+      )
+
       throw new Error("No active session. Please log in.")
     }
 

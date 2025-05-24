@@ -31,41 +31,60 @@ export async function middleware(req: NextRequest) {
             return req.cookies.get(name)?.value
           },
           set(name: string, value: string, options: any) {
+            // Set cookies with path-based settings that work across domains
+            const cookieOptions = {
+              ...options,
+              path: "/",
+              sameSite: "lax",
+              secure: process.env.NODE_ENV === "production",
+            }
+
             req.cookies.set({
               name,
               value,
-              ...options,
+              ...cookieOptions,
             })
+
             response = NextResponse.next({
               request: {
                 headers: req.headers,
               },
             })
+
             response.cookies.set({
               name,
               value,
-              ...options,
+              ...cookieOptions,
             })
           },
           remove(name: string, options: any) {
+            const cookieOptions = {
+              ...options,
+              path: "/",
+              maxAge: 0,
+            }
+
             req.cookies.set({
               name,
               value: "",
-              ...options,
-              maxAge: 0,
+              ...cookieOptions,
             })
+
             response = NextResponse.next({
               request: {
                 headers: req.headers,
               },
             })
+
             response.cookies.set({
               name,
               value: "",
-              ...options,
-              maxAge: 0,
+              ...cookieOptions,
             })
           },
+        },
+        auth: {
+          persistSession: true,
         },
       },
     )
@@ -82,7 +101,9 @@ export async function middleware(req: NextRequest) {
     const isAuthCallbackPage = req.nextUrl.pathname.startsWith("/auth/callback")
 
     // Log the authentication state for debugging
-    console.log(`Middleware: Path=${req.nextUrl.pathname}, Authenticated=${isAuthenticated}`)
+    console.log(
+      `Middleware: Path=${req.nextUrl.pathname}, Authenticated=${isAuthenticated}, SessionID=${session?.user?.id || "none"}`,
+    )
 
     // If the user is not authenticated and trying to access a protected route
     if (!isAuthenticated && !isAuthPage && !isPublicPage && !isAuthCallbackPage) {
