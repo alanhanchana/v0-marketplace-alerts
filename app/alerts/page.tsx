@@ -21,7 +21,7 @@ import { SwipeableCard } from "@/components/swipeable-card"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
-import { getSupabaseClient } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
 // Function to get city and state from ZIP code
 function getCityStateFromZip(zip: string): { city: string; state: string } {
@@ -61,7 +61,7 @@ type MarketplaceFilter = "craigslist" | "facebook" | "offerup"
 export default function AlertsPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, status } = useAuth()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,10 +88,10 @@ export default function AlertsPage() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (status === "unauthenticated") {
       router.push("/login")
     }
-  }, [user, authLoading, router])
+  }, [status, router])
 
   // Handle alert update from edit dialog
   const handleAlertUpdated = useCallback((updatedAlert: Alert) => {
@@ -528,7 +528,7 @@ export default function AlertsPage() {
     return now
   }
 
-  if (authLoading) {
+  if (status === "loading") {
     return (
       <div className="py-8 max-w-md mx-auto text-center">
         <div className="flex flex-col items-center justify-center space-y-4">

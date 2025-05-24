@@ -12,7 +12,7 @@ import { AlertCircle, Zap, Target, ArrowRight } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { motion } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
-import { getSupabaseBrowser } from "@/lib/supabase-browser"
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
 // Type for marketplace options
 type MarketplaceOption = "craigslist" | "facebook" | "offerup"
@@ -79,7 +79,7 @@ export default function TargetPage() {
   const [submitClicked, setSubmitClicked] = useState(false)
 
   // Get Supabase client
-  const supabase = getSupabaseBrowser()
+  const supabase = getSupabaseClient()
 
   // Redirect to login if not authenticated
   useEffect(() => {
